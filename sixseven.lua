@@ -1,9 +1,10 @@
 --[[
-    Six Seven - Versão Pets
+    Six Seven - Auto Farm & ESP (Versão Definitiva)
     Game: [🍎] Capture e Domestique!
+    Detecta qualquer coisa que se move no mapa
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - VERSÃO PETS...")
+print("🔄 CARREGANDO SIX SEVEN DEFINITIVO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -35,61 +36,76 @@ local autoCapture = false
 local autoCaptureRunning = false
 local capturedPets = {}
 local espObjects = {}
+local petPositions = {}
 local petList = {}
 
 -- ========================================
--- FUNÇÃO ESPECIAL PARA ENCONTRAR PETS
+-- FUNÇÃO PRINCIPAL - ENCONTRA TUDO QUE SE MOVE
 -- ========================================
-local function FindAllPets()
-    local pets = {}
+local function FindMovingObjects()
+    local objects = {}
     
-    -- Procura por QUALQUER modelo que não seja NPC
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             
-            -- IGNORA O JOGADOR
+            -- Ignora o jogador
             if obj == Character then continue end
             if obj == Player.Character then continue end
             if Players:GetPlayerFromCharacter(obj) then continue end
             
+            -- Ignora objetos comuns
             local name = obj.Name:lower()
-            
-            -- IGNORA NPCS PELO NOME
-            if name:find("npc") then continue end
-            if name:find("humano") then continue end
-            if name:find("personagem") then continue end
-            
-            -- IGNORA OBJETOS COMUNS
             if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
                 continue
             end
-            
-            -- VERIFICA SE TEM CLICKDETECTOR (pets geralmente têm)
-            local hasClickDetector = false
-            local hasBillboard = false
-            
-            for _, child in pairs(obj:GetChildren()) do
-                if child:IsA("ClickDetector") then
-                    hasClickDetector = true
-                end
-                if child:IsA("BillboardGui") then
-                    hasBillboard = true
-                end
-            end
-            
-            -- SE TEM CLICKDETECTOR OU BILLBOARD, É PROVAVELMENTE UM PET
-            if hasClickDetector or hasBillboard then
-                table.insert(pets, obj)
-                print("🐾 Pet encontrado: " .. obj.Name)
+            if name:find("npc") or name:find("humano") or name:find("personagem") then
                 continue
             end
             
-            -- SE TEM NOME DE PET
-            local petKeywords = {"pet", "creature", "monster", "animal", "wild", "capture", "domestique", "divino", "mistico", "chefe", "boss", "gato", "cachorro", "dragao", "fada"}
-            for _, keyword in pairs(petKeywords) do
+            -- Verifica se está se movendo
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local currentPos = hrp.Position
+                
+                if petPositions[obj] then
+                    local oldPos = petPositions[obj]
+                    local dist = (currentPos - oldPos).Magnitude
+                    
+                    -- Se moveu mais de 0.1 unidades, está se movendo
+                    if dist > 0.1 then
+                        table.insert(objects, obj)
+                    end
+                else
+                    -- Primeira vez que vê o objeto, adiciona à lista
+                    table.insert(objects, obj)
+                end
+                
+                petPositions[obj] = currentPos
+            end
+        end
+    end
+    
+    return objects
+end
+
+-- ========================================
+-- FUNÇÃO PARA ENCONTRAR PELO NOME (FALLBACK)
+-- ========================================
+local function FindPetsByName()
+    local pets = {}
+    local keywords = {"pet", "creature", "monster", "animal", "wild", "capture", "domestique", 
+                      "divino", "mistico", "chefe", "boss", "gato", "cachorro", "dragao", "fada",
+                      "lendario", "epico", "raro", "comum"}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+            if obj == Character then continue end
+            if Players:GetPlayerFromCharacter(obj) then continue end
+            
+            local name = obj.Name:lower()
+            for _, keyword in pairs(keywords) do
                 if name:find(keyword) then
                     table.insert(pets, obj)
-                    print("🐾 Pet encontrado: " .. obj.Name)
                     break
                 end
             end
@@ -100,18 +116,37 @@ local function FindAllPets()
 end
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR TODOS OS MODELOS (DIAGNÓSTICO)
+-- FUNÇÃO COMBINADA - ENCONTRA PETS
 -- ========================================
-local function FindAllModels()
-    local models = {}
+local function FindAllPets()
+    -- Primeiro tenta encontrar pelo movimento
+    local moving = FindMovingObjects()
+    
+    -- Se encontrou objetos em movimento, usa eles
+    if #moving > 0 then
+        return moving
+    end
+    
+    -- Se não, tenta encontrar pelo nome
+    local byName = FindPetsByName()
+    if #byName > 0 then
+        return byName
+    end
+    
+    -- Se nada funcionou, procura por QUALQUER modelo com Humanoid
+    local fallback = {}
     for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj:FindFirstChild("Humanoid") then
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
-                table.insert(models, obj)
+                local name = obj.Name:lower()
+                if not name:find("base") and not name:find("floor") and not name:find("wall") then
+                    table.insert(fallback, obj)
+                end
             end
         end
     end
-    return models
+    
+    return fallback
 end
 
 -- ========================================
@@ -338,13 +373,10 @@ local function StartMonitoring()
     workspace.DescendantAdded:Connect(function(obj)
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
-                local name = obj.Name:lower()
-                if not name:find("npc") and not name:find("humano") then
-                    print("🔍 Novo objeto detectado: " .. obj.Name)
-                    if espActive then
-                        task.wait(0.1)
-                        UpdateESP()
-                    end
+                print("🔍 Novo objeto: " .. obj.Name)
+                if espActive then
+                    task.wait(0.1)
+                    UpdateESP()
                 end
             end
         end
@@ -362,8 +394,8 @@ local function CreateMenu()
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 350, 0, 280)
-    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -140)
+    mainFrame.Size = UDim2.new(0, 350, 0, 300)
+    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
@@ -380,7 +412,7 @@ local function CreateMenu()
     title.Size = UDim2.new(1, 0, 0, 35)
     title.BackgroundColor3 = Color3.fromRGB(40, 30, 70)
     title.BackgroundTransparency = 0.3
-    title.Text = "✧ Six Seven - Pets"
+    title.Text = "✧ Six Seven"
     title.TextColor3 = Color3.fromRGB(190, 160, 255)
     title.TextSize = 18
     title.Font = Enum.Font.GothamBold
@@ -486,13 +518,13 @@ local function CreateMenu()
     statusLabel.TextSize = 13
     statusLabel.Font = Enum.Font.Gotham
 
-    -- Botão DEPURAR (para ver todos os modelos)
+    -- Botão Debug
     local debugBtn = Instance.new("TextButton")
     debugBtn.Parent = content
     debugBtn.Size = UDim2.new(1, 0, 0, 30)
     debugBtn.Position = UDim2.new(0, 0, 0, 140)
     debugBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    debugBtn.Text = "🔍 Ver todos os modelos"
+    debugBtn.Text = "🔍 Ver objetos em movimento"
     debugBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
     debugBtn.TextSize = 13
     debugBtn.Font = Enum.Font.GothamBold
@@ -504,23 +536,18 @@ local function CreateMenu()
 
     debugBtn.MouseButton1Click:Connect(function()
         print("========================================")
-        print("  🔍 LISTA DE MODELOS NO MAPA")
+        print("  🔍 OBJETOS EM MOVIMENTO")
         print("========================================")
-        local models = FindAllModels()
-        for i, model in pairs(models) do
-            local hasClick = false
-            local hasBillboard = false
-            for _, child in pairs(model:GetChildren()) do
-                if child:IsA("ClickDetector") then hasClick = true end
-                if child:IsA("BillboardGui") then hasBillboard = true end
+        local moving = FindMovingObjects()
+        if #moving == 0 then
+            print("   Nenhum objeto em movimento!")
+            print("   Tente andar perto de um pet")
+        else
+            for i, obj in pairs(moving) do
+                print(i .. ". " .. obj.Name)
             end
-            print(i .. ". " .. model.Name)
-            print("   ClickDetector: " .. tostring(hasClick))
-            print("   BillboardGui: " .. tostring(hasBillboard))
-            print("   Humanoid: " .. tostring(model:FindFirstChild("Humanoid") ~= nil))
-            print("")
         end
-        print("Total: " .. #models)
+        print("Total: " .. #moving)
         print("========================================")
     end)
 
@@ -559,8 +586,7 @@ local function CreateMenu()
         while true do
             task.wait(2)
             local count = #FindAllPets()
-            local total = #FindAllModels()
-            statusLabel.Text = "📊 Pets: " .. count .. "/" .. total .. " | ESP: " .. (espActive and "ON" or "OFF")
+            statusLabel.Text = "📊 Objetos: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF")
         end
     end)
 
@@ -572,7 +598,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - VERSÃO PETS")
+print("  ✧ SIX SEVEN - DEFINITIVO")
 print("========================================")
 
 -- Cria o menu
@@ -594,6 +620,6 @@ end)
 
 print("========================================")
 print("  ✅ SIX SEVEN PRONTO!")
-print("  📌 Clique em 'Ver todos os modelos'")
-print("  📌 Veja no console quais são os pets")
+print("  📌 Ligue o ESP para ver os objetos")
+print("  📌 Clique em 'Ver objetos em movimento'")
 print("========================================")
