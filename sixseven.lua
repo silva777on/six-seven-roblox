@@ -1,9 +1,9 @@
 --[[
-    Six Seven - Baseado no Script Ofuscado
+    Six Seven - Corrigido (Laço funciona e só teleporta para pets)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - VERSÃO OFUSCADA...")
+print("🔄 CARREGANDO SIX SEVEN CORRIGIDO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -22,8 +22,8 @@ local Humanoid = Character and Character:FindFirstChild("Humanoid")
 local Settings = {
     AutoCapture = { 
         Enabled = false, 
-        Delay = 1.5,
-        TeleportDelay = 0.2
+        Delay = 2.0,
+        TeleportDelay = 0.3
     },
     ESP = {
         Enabled = false,
@@ -41,15 +41,17 @@ local autoCaptureRunning = false
 local capturedPets = {}
 local espObjects = {}
 local petPositions = {}
+local isCapturing = false
 
 -- ========================================
--- LISTA DE NPCS (baseado no script ofuscado)
+-- LISTA DE NPCS E ANIMAIS QUE NÃO SÃO PETS
 -- ========================================
 local npcNames = {
     "npc", "humano", "personagem", "vendedor", "lojista", 
     "guarda", "civil", "aldeao", "comerciante", "treinador",
     "professor", "mestre", "ancião", "mercador", "coruja", "owl",
-    "vaca", "boi", "ovelha", "cabra", "cavalo"
+    "vaca", "boi", "ovelha", "cabra", "cavalo", "galinha", "pato",
+    "porco", "cachorro", "gato", "coelho", "papagaio"
 }
 
 local function IsNPC(obj)
@@ -64,12 +66,11 @@ local function IsNPC(obj)
 end
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR PETS (IGUAL AO OFUSCADO)
+-- FUNÇÃO PARA ENCONTRAR SÓ PETS
 -- ========================================
 local function FindAllPets()
     local pets = {}
     
-    -- Procura por modelos com HumanoidRootPart (igual ao ofuscado)
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             
@@ -90,29 +91,26 @@ local function FindAllPets()
             if name:find("tree") or name:find("rock") or name:find("stone") or name:find("grass") then
                 continue
             end
-            
-            -- Verifica se tem ClickDetector (pets têm)
-            local hasClickDetector = false
-            local hasBillboard = false
-            
-            for _, child in pairs(obj:GetChildren()) do
-                if child:IsA("ClickDetector") then
-                    hasClickDetector = true
-                end
-                if child:IsA("BillboardGui") then
-                    hasBillboard = true
-                end
-            end
-            
-            -- Se tem ClickDetector ou BillboardGui, é um pet
-            if hasClickDetector or hasBillboard then
-                table.insert(pets, obj)
+            if name:find("house") or name:find("building") or name:find("fence") then
                 continue
             end
             
-            -- Verifica se tem Humanoid (fallback)
-            if obj:FindFirstChild("Humanoid") then
-                table.insert(pets, obj)
+            -- Verifica se está se movendo (pets andam, NPCs geralmente ficam parados)
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local currentPos = hrp.Position
+                
+                if petPositions[obj] then
+                    local oldPos = petPositions[obj]
+                    local dist = (currentPos - oldPos).Magnitude
+                    if dist > 0.1 then
+                        table.insert(pets, obj)
+                    end
+                else
+                    table.insert(pets, obj)
+                end
+                
+                petPositions[obj] = currentPos
             end
         end
     end
@@ -121,7 +119,39 @@ local function FindAllPets()
 end
 
 -- ========================================
--- FUNÇÃO PARA EQUIPAR O LAÇO (SLOT 1)
+-- FUNÇÃO PARA VERIFICAR SE É PET DE VERDADE
+-- ========================================
+local function IsRealPet(obj)
+    if not obj then return false end
+    if IsNPC(obj) then return false end
+    if obj == Character then return false end
+    if Players:GetPlayerFromCharacter(obj) then return false end
+    
+    local name = obj.Name:lower()
+    if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
+        return false
+    end
+    
+    -- Verifica se tem ClickDetector
+    for _, child in pairs(obj:GetChildren()) do
+        if child:IsA("ClickDetector") then
+            return true
+        end
+        if child:IsA("BillboardGui") then
+            return true
+        end
+    end
+    
+    -- Verifica se tem Humanoid (fallback)
+    if obj:FindFirstChild("Humanoid") then
+        return true
+    end
+    
+    return false
+end
+
+-- ========================================
+-- FUNÇÃO PARA EQUIPAR O LAÇO (SEM TRAVAR)
 -- ========================================
 local function EquipLasso()
     -- Procura o laço no inventário
@@ -133,64 +163,48 @@ local function EquipLasso()
                 if name:find("laço") or name:find("lasso") or name:find("corda") or name:find("capture") then
                     if Humanoid then
                         Humanoid:EquipTool(item)
-                        print("🎯 Laço equipado!")
-                        task.wait(0.15)
+                        task.wait(0.1)
                         return true
                     end
                 end
             end
         end
     end
-    
-    -- Se não achou, tenta a tecla 1
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-        task.wait(0.05)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-        return true
-    end)
-    
     return false
 end
 
 -- ========================================
--- FUNÇÃO PARA LANÇAR O LAÇO
+-- FUNÇÃO PARA USAR O LAÇO (SEM TRAVAR)
 -- ========================================
-local function ThrowLasso(pet)
+local function UseLasso()
+    -- Tenta equipar
+    EquipLasso()
+    task.wait(0.1)
+    
+    -- Tenta ativar via Remote (não trava)
+    local remote = ReplicatedStorage:FindFirstChild("UseLasso")
+        or ReplicatedStorage:FindFirstChild("Lasso")
+        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("UseLasso")
+    
+    if remote then
+        pcall(function() 
+            remote:FireServer()
+            return true
+        end)
+        return true
+    end
+    
+    return true
+end
+
+-- ========================================
+-- FUNÇÃO PARA CLICAR NO PET (SEM TRAVAR)
+-- ========================================
+local function ClickOnPet(pet)
     if not pet then return false end
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
-    -- 1. Equipa o laço
-    EquipLasso()
-    task.wait(0.15)
-    
-    -- 2. Ativa o laço
-    pcall(function()
-        local tool = Humanoid and Humanoid:FindFirstChild("ActiveTool")
-        if tool then
-            tool:Activate()
-            print("🎯 Laço ativado!")
-        end
-    end)
-    task.wait(0.1)
-    
-    -- 3. Tenta via Remote (igual ao ofuscado)
-    local remote = ReplicatedStorage:FindFirstChild("CapturePet") 
-        or (ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("Capture"))
-        or ReplicatedStorage:FindFirstChild("RemoteEvent")
-    
-    if remote then
-        pcall(function() 
-            remote:FireServer(pet) 
-            print("📡 Captura via Remote: " .. pet.Name)
-            return true
-        end)
-        task.wait(0.5)
-        return true
-    end
-    
-    -- 4. Fallback: clicar no pet
     local camera = workspace.CurrentCamera
     if not camera then return false end
     
@@ -203,16 +217,16 @@ local function ThrowLasso(pet)
             mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
             task.wait(0.05)
             mouse.Button1Click()
-            print("🖱️ Clique no pet: " .. pet.Name)
+            print("🖱️ Clique em: " .. pet.Name)
             return true
         end
     end)
     
-    return true
+    return false
 end
 
 -- ========================================
--- TELEPORTE SUAVE
+-- TELEPORTE SUAVE (SÓ PARA PETS)
 -- ========================================
 local function SmoothTeleport(targetPos)
     if not RootPart then return end
@@ -239,12 +253,20 @@ local function SmoothTeleport(targetPos)
 end
 
 -- ========================================
--- CAPTURAR PET
+-- CAPTURAR PET (COMPLETO)
 -- ========================================
 local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
+    if isCapturing then return false end
+    if not IsRealPet(pet) then return false end
+    
+    isCapturing = true
+    
     local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
+    if not hrp then 
+        isCapturing = false
+        return false 
+    end
     
     print("🎯 Capturando: " .. pet.Name)
     
@@ -254,18 +276,25 @@ local function CapturePet(pet)
     
     task.wait(0.2)
     
-    -- Lança o laço
-    local success = ThrowLasso(pet)
+    -- Usa o laço
+    UseLasso()
+    task.wait(0.2)
+    
+    -- Clica no pet
+    local success = ClickOnPet(pet)
     
     task.wait(0.8)
+    
+    isCapturing = false
     return success
 end
 
 -- ========================================
--- LEVAR PET À BASE
+-- LEVAR PET À BASE (SÓ PARA PETS)
 -- ========================================
 local function BringPetToBase(pet)
     if not pet then return end
+    if not IsRealPet(pet) then return end
     
     local base = workspace:FindFirstChild("Base") or workspace:FindFirstChild("PlayerBase")
     if not base then return end
@@ -281,10 +310,9 @@ local function BringPetToBase(pet)
         task.wait(0.2)
     end
     
-    -- Tenta soltar (igual ao ofuscado)
+    -- Tenta soltar
     local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet")
         or ReplicatedStorage:FindFirstChild("DropPet")
-        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Release")
     
     if releaseRemote then
         pcall(function() 
@@ -296,11 +324,16 @@ local function BringPetToBase(pet)
 end
 
 -- ========================================
--- LOOP DE AUTO CAPTURE
+-- LOOP DE AUTO CAPTURE (COM VERIFICAÇÃO)
 -- ========================================
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
         task.spawn(function()
+            if isCapturing then 
+                task.wait(0.5)
+                return 
+            end
+            
             local pets = FindAllPets()
             local target = nil
             local minDist = math.huge
@@ -310,7 +343,20 @@ local function AutoCaptureLoop()
                 return
             end
             
+            -- Filtra só pets de verdade
+            local realPets = {}
             for _, pet in pairs(pets) do
+                if IsRealPet(pet) then
+                    table.insert(realPets, pet)
+                end
+            end
+            
+            if #realPets == 0 then
+                task.wait(0.5)
+                return
+            end
+            
+            for _, pet in pairs(realPets) do
                 if not capturedPets[pet] then
                     local hrp = pet:FindFirstChild("HumanoidRootPart")
                     if hrp and RootPart then
@@ -340,10 +386,11 @@ local function AutoCaptureLoop()
 end
 
 -- ========================================
--- SISTEMA ESP
+-- SISTEMA ESP (SÓ PARA PETS)
 -- ========================================
 local function CreateESP(pet)
     if not pet or not pet:IsA("Model") then return end
+    if not IsRealPet(pet) then return end
     if espObjects[pet] then return end
     
     local hrp = pet:FindFirstChild("HumanoidRootPart")
@@ -416,16 +463,18 @@ local function UpdateESP()
     
     for _, pet in pairs(pets) do
         if pet and pet:IsA("Model") and pet:FindFirstChild("HumanoidRootPart") then
-            local hrp = pet.HumanoidRootPart
-            if RootPart then
-                local dist = (RootPart.Position - hrp.Position).Magnitude
-                if dist <= Settings.ESP.MaxDistance then
-                    CreateESP(pet)
-                    if espObjects[pet] and espObjects[pet].DistLabel then
-                        espObjects[pet].DistLabel.Text = math.floor(dist) .. "m"
+            if IsRealPet(pet) then
+                local hrp = pet.HumanoidRootPart
+                if RootPart then
+                    local dist = (RootPart.Position - hrp.Position).Magnitude
+                    if dist <= Settings.ESP.MaxDistance then
+                        CreateESP(pet)
+                        if espObjects[pet] and espObjects[pet].DistLabel then
+                            espObjects[pet].DistLabel.Text = math.floor(dist) .. "m"
+                        end
+                    else
+                        RemoveESP(pet)
                     end
-                else
-                    RemoveESP(pet)
                 end
             end
         end
@@ -433,41 +482,15 @@ local function UpdateESP()
     
     local currentPets = {}
     for _, pet in pairs(pets) do
-        currentPets[pet] = true
+        if IsRealPet(pet) then
+            currentPets[pet] = true
+        end
     end
     for pet, _ in pairs(espObjects) do
         if not currentPets[pet] or not pet:IsA("Model") then
             RemoveESP(pet)
         end
     end
-end
-
--- ========================================
--- MONITORAMENTO
--- ========================================
-local function StartMonitoring()
-    task.spawn(function()
-        while true do
-            task.wait(0.5)
-            if espActive then
-                UpdateESP()
-            end
-        end
-    end)
-    
-    workspace.DescendantAdded:Connect(function(obj)
-        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
-            if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
-                if not IsNPC(obj) then
-                    print("🔍 Novo pet detectado: " .. obj.Name)
-                    if espActive then
-                        task.wait(0.1)
-                        UpdateESP()
-                    end
-                end
-            end
-        end
-    end)
 end
 
 -- ========================================
@@ -549,7 +572,6 @@ local function CreateMenu()
         espActive = not espActive
         espBtn.Text = espActive and "🟢 ESP: ON" or "🔴 ESP: OFF"
         espBtn.BackgroundColor3 = espActive and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
-        print("ESP:", espActive and "ON" or "OFF")
         if espActive then
             UpdateESP()
         else
@@ -580,7 +602,6 @@ local function CreateMenu()
         autoCapture = not autoCapture
         autoBtn.Text = autoCapture and "🟢 Auto: ON" or "🔴 Auto: OFF"
         autoBtn.BackgroundColor3 = autoCapture and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
-        print("Auto Capture:", autoCapture and "ON" or "OFF")
         if autoCapture then
             if not autoCaptureRunning then
                 autoCaptureRunning = true
@@ -711,7 +732,6 @@ local function CreateMenu()
         end
     end)
 
-    print("✅ MENU CRIADO!")
     return screenGui
 end
 
@@ -719,25 +739,21 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - VERSÃO OFUSCADA")
+print("  ✧ SIX SEVEN - CORRIGIDO")
 print("========================================")
 
 pcall(CreateMenu)
-StartMonitoring()
 
 Player.CharacterAdded:Connect(function(newChar)
     Character = newChar
     RootPart = newChar:FindFirstChild("HumanoidRootPart")
     Humanoid = newChar:FindFirstChild("Humanoid")
     print("🔄 Respawnou!")
-    task.wait(1)
-    if espActive then
-        UpdateESP()
-    end
 end)
 
 print("========================================")
 print("  ✅ PRONTO!")
-print("  📌 ESP: Mostra pets")
-print("  📌 Auto: Teleporta → Laço → Captura → Base")
+print("  📌 ESP: Mostra só pets")
+print("  📌 Auto: Só teleporta para pets")
+print("  📌 Laço: Não trava mais")
 print("========================================")
