@@ -1,9 +1,9 @@
 --[[
-    Six Seven - Baseado no Avantrix Loader
+    Six Seven - Versão Definitiva (Todos os Pets)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - AVANTRIX STYLE...")
+print("🔄 CARREGANDO SIX SEVEN DEFINITIVO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -17,14 +17,13 @@ local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
 local Humanoid = Character and Character:FindFirstChild("Humanoid")
 
 -- ========================================
--- CONFIGURAÇÕES (IGUAL AO AVANTRIX)
+-- CONFIGURAÇÕES
 -- ========================================
 local Settings = {
     AutoCapture = { 
         Enabled = false, 
-        Delay = 1.5,
-        Range = 50,
-        TeleportSpeed = 0.3
+        Delay = 2.0,
+        Range = 100
     },
     ESP = {
         Enabled = false,
@@ -42,28 +41,61 @@ local autoCaptureRunning = false
 local capturedPets = {}
 local espObjects = {}
 local petPositions = {}
+local allPets = {}
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR PETS (ESTILO AVANTRIX)
+-- LISTA DE NPCS PARA IGNORAR
+-- ========================================
+local npcNames = {
+    "npc", "humano", "personagem", "vendedor", "lojista", 
+    "guarda", "civil", "aldeao", "comerciante", "treinador",
+    "professor", "mestre", "ancião", "mercador", "homem", "mulher",
+    "crianca", "adulto", "velho", "jovem"
+}
+
+local function IsNPC(obj)
+    if not obj then return false end
+    local name = obj.Name:lower()
+    for _, npc in pairs(npcNames) do
+        if name:find(npc) then
+            return true
+        end
+    end
+    return false
+end
+
+-- ========================================
+-- FUNÇÃO PARA ENCONTRAR TODOS OS PETS
 -- ========================================
 local function FindAllPets()
     local pets = {}
     
-    -- Procura por modelos no workspace
     for _, obj in pairs(workspace:GetDescendants()) do
+        -- Procura por modelos com HumanoidRootPart
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             
             -- Ignora o jogador
             if obj == Character then continue end
+            if obj == Player.Character then continue end
             if Players:GetPlayerFromCharacter(obj) then continue end
+            
+            -- Ignora NPCs
+            if IsNPC(obj) then continue end
             
             local name = obj.Name:lower()
             
-            -- Ignora NPCs e objetos comuns
-            if name:find("npc") or name:find("humano") or name:find("personagem") then continue end
-            if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then continue end
+            -- Ignora objetos do cenário
+            if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
+                continue
+            end
+            if name:find("tree") or name:find("rock") or name:find("stone") or name:find("grass") then
+                continue
+            end
+            if name:find("house") or name:find("building") or name:find("fence") then
+                continue
+            end
             
-            -- Verifica se tem partes
+            -- Verifica se tem partes (todo modelo tem)
             local hasParts = false
             for _, child in pairs(obj:GetChildren()) do
                 if child:IsA("BasePart") then
@@ -74,11 +106,12 @@ local function FindAllPets()
             
             if not hasParts then continue end
             
-            -- Verifica se está se movendo
+            -- Verifica se está perto (range)
             local hrp = obj:FindFirstChild("HumanoidRootPart")
             if hrp and RootPart then
                 local dist = (RootPart.Position - hrp.Position).Magnitude
                 
+                -- Adiciona se estiver dentro do range OU se estiver se movendo
                 if dist < Settings.AutoCapture.Range then
                     table.insert(pets, obj)
                 end
@@ -90,19 +123,86 @@ local function FindAllPets()
 end
 
 -- ========================================
--- FUNÇÃO PARA USAR O LAÇO (ESTILO AVANTRIX)
+-- FUNÇÃO PARA ENCONTRAR PELO NOME (FALLBACK)
+-- ========================================
+local function FindPetsByName()
+    local pets = {}
+    
+    -- Lista de palavras que indicam pet
+    local petKeywords = {
+        "capivara", "capy", "cavalo", "vaca", "boi", "ovelha", "cabra",
+        "gato", "cachorro", "coelho", "pato", "galinha", "porco",
+        "dragao", "fada", "elfo", "golem", "esqueleto", "zumbi",
+        "lobo", "urso", "raposa", "veado", "javali", "onca",
+        "papagaio", "tucano", "arara", "aguia", "falcão",
+        "pet", "creature", "monster", "animal", "wild",
+        "divino", "mistico", "chefe", "boss", "lendario", "epico",
+        "capture", "domestique", "domestico", "selvagem"
+    }
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+            if obj == Character then continue end
+            if Players:GetPlayerFromCharacter(obj) then continue end
+            if IsNPC(obj) then continue end
+            
+            local name = obj.Name:lower()
+            for _, keyword in pairs(petKeywords) do
+                if name:find(keyword) then
+                    table.insert(pets, obj)
+                    break
+                end
+            end
+        end
+    end
+    
+    return pets
+end
+
+-- ========================================
+-- FUNÇÃO COMBINADA
+-- ========================================
+local function GetAllPets()
+    -- Primeiro tenta encontrar pelo nome (mais específico)
+    local byName = FindPetsByName()
+    
+    -- Depois tenta encontrar por movimento
+    local moving = FindAllPets()
+    
+    -- Combina as duas listas (sem duplicatas)
+    local combined = {}
+    local seen = {}
+    
+    for _, pet in pairs(byName) do
+        if not seen[pet] then
+            seen[pet] = true
+            table.insert(combined, pet)
+        end
+    end
+    
+    for _, pet in pairs(moving) do
+        if not seen[pet] then
+            seen[pet] = true
+            table.insert(combined, pet)
+        end
+    end
+    
+    return combined
+end
+
+-- ========================================
+-- USAR LAÇO (SIMPLES)
 -- ========================================
 local function UseLasso()
-    -- Tenta usar a tecla 1 (slot do laço)
+    -- Tecla 1
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
         task.wait(0.05)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-        print("🎯 Tecla 1 pressionada")
         return true
     end)
     
-    -- Tenta encontrar o laço no inventário
+    -- Procura o laço
     local backpack = Player:FindFirstChild("Backpack")
     if backpack then
         for _, item in pairs(backpack:GetChildren()) do
@@ -111,29 +211,10 @@ local function UseLasso()
                 if name:find("laço") or name:find("lasso") or name:find("corda") then
                     if Humanoid then
                         Humanoid:EquipTool(item)
-                        print("🎯 Laço equipado")
                         task.wait(0.1)
                         item:Activate()
-                        print("🎯 Laço ativado")
                         return true
                     end
-                end
-            end
-        end
-    end
-    
-    -- Tenta clicar no laço na UI
-    local playerGui = Player:FindFirstChild("PlayerGui")
-    if playerGui then
-        for _, gui in pairs(playerGui:GetDescendants()) do
-            if gui:IsA("TextButton") or gui:IsA("ImageButton") then
-                local name = gui.Name:lower()
-                if name:find("laço") or name:find("lasso") or name:find("corda") then
-                    pcall(function()
-                        gui:Fire()
-                        print("🎯 Laço clicado na UI")
-                        return true
-                    end)
                 end
             end
         end
@@ -143,7 +224,7 @@ local function UseLasso()
 end
 
 -- ========================================
--- FUNÇÃO PARA CLICAR NO PET
+-- CLICAR NO PET
 -- ========================================
 local function ClickOnPet(pet)
     if not pet then return false end
@@ -162,7 +243,6 @@ local function ClickOnPet(pet)
             mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
             task.wait(0.05)
             mouse.Button1Click()
-            print("🖱️ Clique no pet: " .. pet.Name)
             return true
         end
     end)
@@ -171,16 +251,14 @@ local function ClickOnPet(pet)
 end
 
 -- ========================================
--- FUNÇÃO DE CAPTURA (ESTILO AVANTRIX)
+-- CAPTURAR PET
 -- ========================================
 local function CapturePet(pet)
     if not pet then return false end
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
-    print("🎯 Capturando: " .. pet.Name)
-    
-    -- Teleporta para o pet
+    -- Teleporta
     if RootPart then
         local targetPos = hrp.Position + Vector3.new(0, 2, 0)
         pcall(function()
@@ -189,11 +267,11 @@ local function CapturePet(pet)
         task.wait(0.2)
     end
     
-    -- Usa o laço
+    -- Usa laço
     UseLasso()
     task.wait(0.2)
     
-    -- Clica no pet
+    -- Clica
     local success = ClickOnPet(pet)
     task.wait(0.5)
     
@@ -201,7 +279,7 @@ local function CapturePet(pet)
 end
 
 -- ========================================
--- LEVAR PET À BASE
+-- LEVAR À BASE
 -- ========================================
 local function BringPetToBase(pet)
     if not pet then return end
@@ -219,10 +297,8 @@ local function BringPetToBase(pet)
         task.wait(0.2)
     end
     
-    -- Tenta soltar
     local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet") 
         or ReplicatedStorage:FindFirstChild("DropPet")
-        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Release")
     
     if releaseRemote then
         pcall(function() releaseRemote:FireServer(pet) end)
@@ -236,7 +312,7 @@ end
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
         task.spawn(function()
-            local pets = FindAllPets()
+            local pets = GetAllPets()
             local target = nil
             local minDist = math.huge
             
@@ -259,6 +335,7 @@ local function AutoCaptureLoop()
             end
             
             if target then
+                print("🎯 Capturando: " .. target.Name)
                 local success = CapturePet(target)
                 if success then
                     capturedPets[target] = true
@@ -333,7 +410,7 @@ local function UpdateESP()
         return
     end
     
-    local pets = FindAllPets()
+    local pets = GetAllPets()
     for _, pet in pairs(pets) do
         if pet and pet:IsA("Model") and pet:FindFirstChild("HumanoidRootPart") then
             local hrp = pet.HumanoidRootPart
@@ -516,7 +593,7 @@ local function CreateMenu()
     task.spawn(function()
         while true do
             task.wait(2)
-            local count = #FindAllPets()
+            local count = #GetAllPets()
             statusLabel.Text = "📊 Pets: " .. count
         end
     end)
@@ -529,7 +606,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - AVANTRIX STYLE")
+print("  ✧ SIX SEVEN - DEFINITIVO")
 print("========================================")
 
 pcall(CreateMenu)
