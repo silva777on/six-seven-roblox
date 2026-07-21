@@ -1,95 +1,30 @@
--- LISTA TUDO NO JOGO
-print("========================================")
-print("  📋 LISTANDO TODOS OS OBJETOS")
-print("========================================")
+-- SCRIPT QUE DETECTA POR NOME (qualquer nome que você colocar)
+print("🔍 DIGITE O NOME DO PET QUE VOCÊ VÊ:")
 
-local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
+-- Substitua "PET" pelo nome que você vê no jogo
+local NOME_DO_PET = "PET"  -- <--- MUDE AQUI!
 
-local function ListAllObjects()
-    local total = 0
-    local models = {}
-    
-    -- Primeiro, lista todas as pastas principais
-    print("")
-    print("📁 PASTAS PRINCIPAIS:")
-    for _, child in pairs(workspace:GetChildren()) do
-        print("   - " .. child.Name .. " (" .. child.ClassName .. ")")
-    end
-    
-    print("")
-    print("🔍 PROCURANDO MODELOS COM PARTES...")
-    print("")
-    
-    -- Procura por modelos que têm partes (BasePart)
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") then
-            local hasParts = false
-            local partNames = {}
-            
-            for _, child in pairs(obj:GetChildren()) do
-                if child:IsA("BasePart") then
-                    hasParts = true
-                    table.insert(partNames, child.Name)
-                end
-            end
-            
-            if hasParts then
-                total = total + 1
-                local isPlayer = (obj == Player.Character)
-                local parentName = obj.Parent and obj.Parent.Name or "N/A"
-                
-                print("📦 #" .. total .. " - " .. obj.Name)
-                print("   📂 Pai: " .. parentName)
-                print("   👤 É jogador? " .. tostring(isPlayer))
-                print("   🧩 Partes: " .. table.concat(partNames, ", "))
-                
-                -- Verifica se tem Humanoid
-                if obj:FindFirstChild("Humanoid") then
-                    print("   ❤️ Tem Humanoid: SIM")
-                end
-                
-                -- Verifica se tem ClickDetector
-                if obj:FindFirstChild("ClickDetector") then
-                    print("   🖱️ Tem ClickDetector: SIM")
-                end
-                
-                -- Verifica se tem BillboardGui
-                if obj:FindFirstChild("BillboardGui") then
-                    print("   📝 Tem BillboardGui: SIM")
-                end
-                
-                print("")
-            end
-        end
-    end
-    
-    print("========================================")
-    print("  📊 TOTAL DE MODELOS: " .. total)
-    print("========================================")
-    print("")
-    print("👀 Procure por nomes que parecem pets:")
-    print("   - Divino, Mistico, Chefe, Boss")
-    print("   - Pet, Creature, Monster")
-    print("   - Animal, Wild, Capture")
-    print("")
-    print("📌 Me diga quais nomes você vê!")
-end
+print("Procurando por: " .. NOME_DO_PET)
 
--- Executa
-pcall(ListAllObjects)
+local encontrados = 0
 
--- Tenta encontrar remotas também
-print("")
-print("🔍 PROCURANDO REMOTES...")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-        print("📡 Remote: " .. obj.Name)
+for _, obj in pairs(workspace:GetDescendants()) do
+    if obj:IsA("Model") and obj.Name:find(NOME_DO_PET) then
+        encontrados = encontrados + 1
+        print("✅ Encontrado: " .. obj.Name)
+        
+        -- Destaca
+        pcall(function()
+            local h = Instance.new("Highlight")
+            h.Parent = obj
+            h.FillColor = Color3.fromRGB(0, 255, 0)
+            h.FillTransparency = 0.2
+            h.OutlineColor = Color3.fromRGB(255, 255, 0)
+            h.OutlineTransparency = 0
+            h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            h.Enabled = true
+        end)
     end
 end
 
-print("")
-print("========================================")
-print("  ✅ LISTAGEM CONCLUÍDA")
-print("========================================")
+print("Total encontrados: " .. encontrados)
