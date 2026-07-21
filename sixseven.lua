@@ -1,10 +1,9 @@
 --[[
-    Six Seven - Auto Farm & ESP (Versão Definitiva)
+    Six Seven - Auto Farm & ESP (Com Laço)
     Game: [🍎] Capture e Domestique!
-    Detecta qualquer coisa que se move no mapa
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN DEFINITIVO...")
+print("🔄 CARREGANDO SIX SEVEN - VERSÃO LAÇO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -20,7 +19,12 @@ local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
 -- CONFIGURAÇÕES
 -- ========================================
 local Settings = {
-    AutoCapture = { Enabled = false, Delay = 1.5 },
+    AutoCapture = { 
+        Enabled = false, 
+        Delay = 1.5,
+        TeleportDelay = 0.3,  -- Delay entre teleportes (mais suave)
+        UseLasso = true       -- Usar laço para capturar
+    },
     ESP = {
         Enabled = false,
         Color = Color3.fromRGB(0, 255, 0),
@@ -40,20 +44,17 @@ local petPositions = {}
 local petList = {}
 
 -- ========================================
--- FUNÇÃO PRINCIPAL - ENCONTRA TUDO QUE SE MOVE
+-- FUNÇÃO PARA ENCONTRAR PETS
 -- ========================================
-local function FindMovingObjects()
-    local objects = {}
+local function FindAllPets()
+    local pets = {}
     
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
-            
-            -- Ignora o jogador
             if obj == Character then continue end
             if obj == Player.Character then continue end
             if Players:GetPlayerFromCharacter(obj) then continue end
             
-            -- Ignora objetos comuns
             local name = obj.Name:lower()
             if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
                 continue
@@ -62,7 +63,6 @@ local function FindMovingObjects()
                 continue
             end
             
-            -- Verifica se está se movendo
             local hrp = obj:FindFirstChild("HumanoidRootPart")
             if hrp then
                 local currentPos = hrp.Position
@@ -71,43 +71,14 @@ local function FindMovingObjects()
                     local oldPos = petPositions[obj]
                     local dist = (currentPos - oldPos).Magnitude
                     
-                    -- Se moveu mais de 0.1 unidades, está se movendo
                     if dist > 0.1 then
-                        table.insert(objects, obj)
+                        table.insert(pets, obj)
                     end
                 else
-                    -- Primeira vez que vê o objeto, adiciona à lista
-                    table.insert(objects, obj)
+                    table.insert(pets, obj)
                 end
                 
                 petPositions[obj] = currentPos
-            end
-        end
-    end
-    
-    return objects
-end
-
--- ========================================
--- FUNÇÃO PARA ENCONTRAR PELO NOME (FALLBACK)
--- ========================================
-local function FindPetsByName()
-    local pets = {}
-    local keywords = {"pet", "creature", "monster", "animal", "wild", "capture", "domestique", 
-                      "divino", "mistico", "chefe", "boss", "gato", "cachorro", "dragao", "fada",
-                      "lendario", "epico", "raro", "comum"}
-    
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
-            if obj == Character then continue end
-            if Players:GetPlayerFromCharacter(obj) then continue end
-            
-            local name = obj.Name:lower()
-            for _, keyword in pairs(keywords) do
-                if name:find(keyword) then
-                    table.insert(pets, obj)
-                    break
-                end
             end
         end
     end
@@ -116,54 +87,119 @@ local function FindPetsByName()
 end
 
 -- ========================================
--- FUNÇÃO COMBINADA - ENCONTRA PETS
+-- FUNÇÃO PARA TELEPORTAR SUAVEMENTE
 -- ========================================
-local function FindAllPets()
-    -- Primeiro tenta encontrar pelo movimento
-    local moving = FindMovingObjects()
+local function SmoothTeleport(targetPos)
+    if not RootPart then return end
     
-    -- Se encontrou objetos em movimento, usa eles
-    if #moving > 0 then
-        return moving
+    -- Calcula a distância
+    local currentPos = RootPart.Position
+    local dist = (currentPos - targetPos).Magnitude
+    
+    -- Se estiver muito longe, teleporta normal
+    if dist > 100 then
+        pcall(function()
+            RootPart.CFrame = CFrame.new(targetPos)
+        end)
+        task.wait(Settings.AutoCapture.TeleportDelay)
+        return
     end
     
-    -- Se não, tenta encontrar pelo nome
-    local byName = FindPetsByName()
-    if #byName > 0 then
-        return byName
+    -- Se estiver perto, teleporta suavemente
+    if dist > 5 then
+        local steps = math.min(math.floor(dist / 5), 10)
+        for i = 1, steps do
+            local progress = i / steps
+            local newPos = currentPos:Lerp(targetPos, progress)
+            pcall(function()
+                RootPart.CFrame = CFrame.new(newPos)
+            end)
+            task.wait(Settings.AutoCapture.TeleportDelay / steps)
+        end
     end
     
-    -- Se nada funcionou, procura por QUALQUER modelo com Humanoid
-    local fallback = {}
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj:FindFirstChild("Humanoid") then
-            if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
-                local name = obj.Name:lower()
-                if not name:find("base") and not name:find("floor") and not name:find("wall") then
-                    table.insert(fallback, obj)
+    -- Teleporta final
+    pcall(function()
+        RootPart.CFrame = CFrame.new(targetPos)
+    end)
+    task.wait(0.1)
+end
+
+-- ========================================
+-- FUNÇÃO PARA USAR O LAÇO
+-- ========================================
+local function UseLasso(pet)
+    if not pet or not pet:IsA("Model") then return false end
+    
+    -- Tenta encontrar o laço no inventário
+    local backpack = Player:FindFirstChild("Backpack")
+    local lasso = nil
+    
+    if backpack then
+        for _, item in pairs(backpack:GetChildren()) do
+            local name = item.Name:lower()
+            if name:find("laço") or name:find("lasso") or name:find("capture") or name:find("corda") then
+                lasso = item
+                break
+            end
+        end
+    end
+    
+    -- Se não achou no Backpack, procura no StarterGui ou no PlayerGui
+    if not lasso then
+        for _, gui in pairs(Player:GetChildren()) do
+            if gui:IsA("ScreenGui") or gui:IsA("PlayerGui") then
+                for _, item in pairs(gui:GetDescendants()) do
+                    local name = item.Name:lower()
+                    if name:find("laço") or name:find("lasso") or name:find("capture") or name:find("corda") then
+                        if item:IsA("TextButton") or item:IsA("ImageButton") then
+                            lasso = item
+                            break
+                        end
+                    end
                 end
             end
         end
     end
     
-    return fallback
+    -- Se encontrou o laço, tenta usar
+    if lasso then
+        pcall(function()
+            -- Tenta clicar no laço
+            if lasso:IsA("TextButton") or lasso:IsA("ImageButton") then
+                lasso:Fire()
+                print("🎯 Laço ativado!")
+                task.wait(0.2)
+            end
+            
+            -- Tenta ativar via Remote
+            local remote = ReplicatedStorage:FindFirstChild("UseLasso")
+                or ReplicatedStorage:FindFirstChild("Lasso")
+                or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("UseLasso")
+            
+            if remote then
+                remote:FireServer(pet)
+                print("🎯 Laço lançado em: " .. pet.Name)
+                task.wait(0.5)
+                return true
+            end
+        end)
+        return true
+    end
+    
+    -- Se não encontrou laço, tenta captura normal
+    return CapturePetNormal(pet)
 end
 
 -- ========================================
--- SISTEMA DE CAPTURA
+-- FUNÇÃO DE CAPTURA NORMAL (FALLBACK)
 -- ========================================
-local function CapturePet(pet)
+local function CapturePetNormal(pet)
     if not pet or not pet:IsA("Model") then return false end
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
-    if RootPart then
-        local targetPos = hrp.Position + Vector3.new(0, 3, 0)
-        pcall(function() RootPart.CFrame = CFrame.new(targetPos) end)
-        task.wait(0.1)
-    end
-    
-    -- Tenta encontrar o Remote
+    -- Tenta encontrar o Remote de captura
     local remote = ReplicatedStorage:FindFirstChild("CapturePet") 
         or (ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("Capture"))
         or ReplicatedStorage:FindFirstChild("RemoteEvent")
@@ -177,7 +213,7 @@ local function CapturePet(pet)
         return true
     end
     
-    -- Tenta clicar
+    -- Tenta clicar no pet
     pcall(function()
         local mouse = Player:GetMouse()
         if mouse then
@@ -194,6 +230,37 @@ local function CapturePet(pet)
     return true
 end
 
+-- ========================================
+-- FUNÇÃO PRINCIPAL DE CAPTURA
+-- ========================================
+local function CapturePet(pet)
+    if not pet or not pet:IsA("Model") then return false end
+    local hrp = pet:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    -- Teleporta suavemente até o pet
+    local targetPos = hrp.Position + Vector3.new(0, 3, 0)
+    SmoothTeleport(targetPos)
+    
+    -- Espera um pouco antes de capturar
+    task.wait(0.3)
+    
+    -- Tenta usar o laço
+    if Settings.AutoCapture.UseLasso then
+        local success = UseLasso(pet)
+        if success then
+            print("✅ Capturado com laço: " .. pet.Name)
+            return true
+        end
+    end
+    
+    -- Se o laço falhou, tenta captura normal
+    return CapturePetNormal(pet)
+end
+
+-- ========================================
+-- FUNÇÃO PARA LEVAR PET À BASE
+-- ========================================
 local function BringPetToBase(pet)
     if not pet then return end
     
@@ -203,7 +270,12 @@ local function BringPetToBase(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if hrp then
         local basePos = base.Position + Vector3.new(0, 2, 0)
-        pcall(function() hrp.CFrame = CFrame.new(basePos) end)
+        SmoothTeleport(basePos)
+        task.wait(0.2)
+        
+        pcall(function()
+            hrp.CFrame = CFrame.new(basePos)
+        end)
         task.wait(0.2)
     end
     
@@ -211,11 +283,17 @@ local function BringPetToBase(pet)
         or ReplicatedStorage:FindFirstChild("DropPet")
     
     if releaseRemote then
-        pcall(function() releaseRemote:FireServer(pet) end)
+        pcall(function() 
+            releaseRemote:FireServer(pet) 
+            print("📦 Pet solto na base!")
+        end)
         task.wait(0.3)
     end
 end
 
+-- ========================================
+-- LOOP DE AUTO CAPTURE
+-- ========================================
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
         task.spawn(function()
@@ -237,12 +315,12 @@ local function AutoCaptureLoop()
             end
             
             if target then
-                print("🎯 Capturando: " .. target.Name)
+                print("🎯 Alvo: " .. target.Name)
                 local success = CapturePet(target)
                 if success then
                     capturedPets[target] = true
                     BringPetToBase(target)
-                    print("✅ Capturado: " .. target.Name)
+                    print("✅ " .. target.Name .. " capturado!")
                 end
                 task.wait(Settings.AutoCapture.Delay)
             else
@@ -394,8 +472,8 @@ local function CreateMenu()
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 350, 0, 300)
-    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
+    mainFrame.Size = UDim2.new(0, 350, 0, 320)
+    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -160)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
@@ -507,49 +585,68 @@ local function CreateMenu()
         end
     end)
 
+    -- Slider para Delay do Teleporte
+    local delayLabel = Instance.new("TextLabel")
+    delayLabel.Parent = content
+    delayLabel.Size = UDim2.new(1, 0, 0, 20)
+    delayLabel.Position = UDim2.new(0, 0, 0, 100)
+    delayLabel.BackgroundTransparency = 1
+    delayLabel.Text = "⏱️ Delay Teleporte: 0.3s"
+    delayLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
+    delayLabel.TextSize = 13
+    delayLabel.Font = Enum.Font.Gotham
+
+    -- Botão para aumentar/diminuir delay
+    local delayBtn = Instance.new("TextButton")
+    delayBtn.Parent = content
+    delayBtn.Size = UDim2.new(0.5, -5, 0, 25)
+    delayBtn.Position = UDim2.new(0, 0, 0, 125)
+    delayBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+    delayBtn.Text = "⬅️ Mais devagar"
+    delayBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    delayBtn.TextSize = 12
+    delayBtn.Font = Enum.Font.GothamBold
+    delayBtn.BorderSizePixel = 0
+
+    local delayCorner1 = Instance.new("UICorner")
+    delayCorner1.Parent = delayBtn
+    delayCorner1.CornerRadius = UDim.new(0, 5)
+
+    local delayBtn2 = Instance.new("TextButton")
+    delayBtn2.Parent = content
+    delayBtn2.Size = UDim2.new(0.5, -5, 0, 25)
+    delayBtn2.Position = UDim2.new(0.5, 5, 0, 125)
+    delayBtn2.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+    delayBtn2.Text = "Mais rápido ➡️"
+    delayBtn2.TextColor3 = Color3.fromRGB(255, 255, 255)
+    delayBtn2.TextSize = 12
+    delayBtn2.Font = Enum.Font.GothamBold
+    delayBtn2.BorderSizePixel = 0
+
+    local delayCorner2 = Instance.new("UICorner")
+    delayCorner2.Parent = delayBtn2
+    delayCorner2.CornerRadius = UDim.new(0, 5)
+
+    delayBtn.MouseButton1Click:Connect(function()
+        Settings.AutoCapture.TeleportDelay = math.min(Settings.AutoCapture.TeleportDelay + 0.1, 1.5)
+        delayLabel.Text = "⏱️ Delay Teleporte: " .. Settings.AutoCapture.TeleportDelay .. "s"
+    end)
+
+    delayBtn2.MouseButton1Click:Connect(function()
+        Settings.AutoCapture.TeleportDelay = math.max(Settings.AutoCapture.TeleportDelay - 0.1, 0.05)
+        delayLabel.Text = "⏱️ Delay Teleporte: " .. Settings.AutoCapture.TeleportDelay .. "s"
+    end)
+
     -- Status
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Parent = content
     statusLabel.Size = UDim2.new(1, 0, 0, 30)
-    statusLabel.Position = UDim2.new(0, 0, 0, 100)
+    statusLabel.Position = UDim2.new(0, 0, 0, 160)
     statusLabel.BackgroundTransparency = 1
     statusLabel.Text = "📊 Status: Pronto"
     statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
     statusLabel.TextSize = 13
     statusLabel.Font = Enum.Font.Gotham
-
-    -- Botão Debug
-    local debugBtn = Instance.new("TextButton")
-    debugBtn.Parent = content
-    debugBtn.Size = UDim2.new(1, 0, 0, 30)
-    debugBtn.Position = UDim2.new(0, 0, 0, 140)
-    debugBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    debugBtn.Text = "🔍 Ver objetos em movimento"
-    debugBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
-    debugBtn.TextSize = 13
-    debugBtn.Font = Enum.Font.GothamBold
-    debugBtn.BorderSizePixel = 0
-
-    local debugCorner = Instance.new("UICorner")
-    debugCorner.Parent = debugBtn
-    debugCorner.CornerRadius = UDim.new(0, 8)
-
-    debugBtn.MouseButton1Click:Connect(function()
-        print("========================================")
-        print("  🔍 OBJETOS EM MOVIMENTO")
-        print("========================================")
-        local moving = FindMovingObjects()
-        if #moving == 0 then
-            print("   Nenhum objeto em movimento!")
-            print("   Tente andar perto de um pet")
-        else
-            for i, obj in pairs(moving) do
-                print(i .. ". " .. obj.Name)
-            end
-        end
-        print("Total: " .. #moving)
-        print("========================================")
-    end)
 
     -- Botão flutuante
     local floatBtn = Instance.new("TextButton")
@@ -598,7 +695,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - DEFINITIVO")
+print("  ✧ SIX SEVEN - VERSÃO LAÇO")
 print("========================================")
 
 -- Cria o menu
@@ -620,6 +717,7 @@ end)
 
 print("========================================")
 print("  ✅ SIX SEVEN PRONTO!")
-print("  📌 Ligue o ESP para ver os objetos")
-print("  📌 Clique em 'Ver objetos em movimento'")
+print("  📌 Ligue o ESP para ver os pets")
+print("  📌 Ligue o Auto Capture para capturar")
+print("  📌 Ajuste o delay se necessário")
 print("========================================")
