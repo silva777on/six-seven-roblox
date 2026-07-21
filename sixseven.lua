@@ -1,20 +1,10 @@
 --[[
-    Six Seven - Auto Farm & ESP (CORRIGIDO)
+    Six Seven - Auto Farm & ESP (VERSÃO ULTRA SIMPLES)
     Game: [🍎] Capture e Domestique!
 ]]
 
-local Settings = {
-    AutoCapture = { Enabled = false, Delay = 1.5 },
-    ESP = {
-        Divinos = { Enabled = false, Color = Color3.fromRGB(255, 215, 0), MaxDistance = 150 },
-        Misticos = { Enabled = false, Color = Color3.fromRGB(148, 0, 211), MaxDistance = 150 },
-        Chefes = { Enabled = false, Color = Color3.fromRGB(255, 0, 0), MaxDistance = 150 }
-    }
-}
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
 
@@ -22,53 +12,137 @@ local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
 
+-- ========================================
+-- VARIÁVEIS
+-- ========================================
+local autoCapture = false
 local autoCaptureRunning = false
 local capturedPets = {}
-local petList = {}
-local petESP = {}
 local espActive = false
+local espObjects = {}
+local petList = {}
 
 -- ========================================
--- FUNÇÕES DE PET
+-- FUNÇÃO PARA ENCONTRAR PETS (MODO SIMPLES)
 -- ========================================
-local function GetPetType(pet)
-    if not pet then return nil end
-    local name = pet.Name:lower()
-    if name:find("divino") or name:find("lendario") or name:find("lendário") then 
-        return "Divinos"
-    elseif name:find("mistico") or name:find("místico") or name:find("epico") or name:find("épico") then 
-        return "Misticos"
-    elseif name:find("chefe") or name:find("boss") then 
-        return "Chefes" 
-    end
-    return nil
-end
-
-local function IsPet(pet)
-    if not pet or not pet:IsA("Model") then return false end
-    if not pet:FindFirstChild("HumanoidRootPart") then return false end
+local function FindAllPets()
+    local pets = {}
     
-    local name = pet.Name:lower()
-    -- Detecta pets pelo nome ou por partes específicas
-    if name:find("pet") or name:find("creature") or name:find("monster") or name:find("boss") then
-        return true
+    -- Procura por qualquer modelo com "Humanoid" e que pareça um pet
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") then
+            local name = v.Name:lower()
+            -- Verifica se é um pet por nome
+            if name:find("pet") or name:find("creature") or name:find("monster") or name:find("boss") or name:find("divino") or name:find("mistico") or name:find("chefe") then
+                -- Verifica se não é o próprio jogador
+                if v ~= Character and v.Name ~= Player.Name then
+                    table.insert(pets, v)
+                end
+            end
+        end
     end
     
-    -- Detecta por atributos
-    if pet:FindFirstChild("IsPet") or pet:FindFirstChild("PetTag") then
-        return true
-    end
-    
-    return false
-end
-
-local function GetDistance(pos1, pos2)
-    if not pos1 or not pos2 then return math.huge end
-    return (pos1 - pos2).Magnitude
+    return pets
 end
 
 -- ========================================
--- SISTEMA DE CAPTURA
+-- SISTEMA ESP (USANDO BILLBOARDGUI PARA TESTE)
+-- ========================================
+local function CreateESP(pet)
+    if not pet or not pet:IsA("Model") then return end
+    if espObjects[pet] then return end
+    
+    local hrp = pet:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    -- Cria um Highlight (mais simples e visível)
+    local highlight = Instance.new("Highlight")
+    highlight.Parent = pet
+    highlight.FillColor = Color3.fromRGB(0, 255, 0)
+    highlight.FillTransparency = 0.4
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.OutlineTransparency = 0.1
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Enabled = true
+    
+    -- Adiciona um nome flutuante para teste
+    local billboard = Instance.new("BillboardGui")
+    billboard.Parent = hrp
+    billboard.Size = UDim2.new(0, 150, 0, 30)
+    billboard.Adornee = hrp
+    billboard.AlwaysOnTop = true
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = billboard
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    label.BackgroundTransparency = 0.5
+    label.Text = "🐾 " .. pet.Name
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = 14
+    label.Font = Enum.Font.GothamBold
+    label.TextScaled = true
+    
+    espObjects[pet] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        Label = label
+    }
+    
+    print("✅ ESP criado para:", pet.Name)
+end
+
+local function RemoveESP(pet)
+    if espObjects[pet] then
+        if espObjects[pet].Highlight then espObjects[pet].Highlight:Destroy() end
+        if espObjects[pet].Billboard then espObjects[pet].Billboard:Destroy() end
+        espObjects[pet] = nil
+    end
+end
+
+local function UpdateESP()
+    if not espActive then
+        -- Remove todos os ESPs
+        for pet, _ in pairs(espObjects) do
+            RemoveESP(pet)
+        end
+        espObjects = {}
+        return
+    end
+    
+    -- Encontra todos os pets
+    local pets = FindAllPets()
+    
+    -- Cria ESP para cada pet
+    for _, pet in pairs(pets) do
+        if pet and pet:IsA("Model") and pet:FindFirstChild("HumanoidRootPart") then
+            -- Verifica distância
+            local hrp = pet.HumanoidRootPart
+            if RootPart then
+                local dist = (RootPart.Position - hrp.Position).Magnitude
+                if dist <= 200 then -- Distância máxima
+                    CreateESP(pet)
+                else
+                    RemoveESP(pet)
+                end
+            end
+        end
+    end
+    
+    -- Remove ESP de pets que não existem mais
+    local currentPets = {}
+    for _, pet in pairs(pets) do
+        currentPets[pet] = true
+    end
+    for pet, _ in pairs(espObjects) do
+        if not currentPets[pet] or not pet:IsA("Model") then
+            RemoveESP(pet)
+        end
+    end
+end
+
+-- ========================================
+-- AUTO CAPTURE
 -- ========================================
 local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
@@ -81,246 +155,95 @@ local function CapturePet(pet)
         task.wait(0.1)
     end
     
-    local remote = ReplicatedStorage:FindFirstChild("CapturePet") 
-        or (ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("Capture"))
-        or ReplicatedStorage:FindFirstChild("RemoteEvent")
-    
+    -- Tenta capturar (pode precisar ajustar)
+    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("CapturePet")
     if remote then
         pcall(function() remote:FireServer(pet) end)
         task.wait(0.5)
         return true
     end
     
-    return false
-end
-
-local function BringPetToBase(pet)
-    if not pet then return end
+    -- Tenta com click (simulação)
+    pcall(function()
+        local mouse = Player:GetMouse()
+        if mouse then
+            local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+            if onScreen then
+                mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
+                mouse.Button1Click()
+            end
+        end
+    end)
     
-    local base = workspace:FindFirstChild("Base") or workspace:FindFirstChild("PlayerBase")
-    if not base then return end
-    
-    local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local basePos = base.Position + Vector3.new(0, 2, 0)
-        pcall(function() hrp.CFrame = CFrame.new(basePos) end)
-        task.wait(0.2)
-    end
-    
-    local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet")
-        or ReplicatedStorage:FindFirstChild("DropPet")
-    
-    if releaseRemote then
-        pcall(function() releaseRemote:FireServer(pet) end)
-        task.wait(0.3)
-    end
+    return true
 end
 
 local function AutoCaptureLoop()
-    while autoCaptureRunning and Settings.AutoCapture.Enabled do
+    while autoCapture and autoCaptureRunning do
         task.spawn(function()
-            local pets = {}
-            for _, v in pairs(workspace:GetDescendants()) do
-                if IsPet(v) then
-                    if not capturedPets[v] then
-                        table.insert(pets, v)
-                    end
-                end
-            end
-            
-            if #pets == 0 then
-                task.wait(1)
-                return
-            end
-            
+            local pets = FindAllPets()
             local target = nil
             local minDist = math.huge
             
-            for _, pet in ipairs(pets) do
-                local hrp = pet:FindFirstChild("HumanoidRootPart")
-                if hrp and RootPart then
-                    local dist = GetDistance(RootPart.Position, hrp.Position)
-                    if dist < minDist then
-                        minDist = dist
-                        target = pet
+            for _, pet in pairs(pets) do
+                if not capturedPets[pet] then
+                    local hrp = pet:FindFirstChild("HumanoidRootPart")
+                    if hrp and RootPart then
+                        local dist = (RootPart.Position - hrp.Position).Magnitude
+                        if dist < minDist then
+                            minDist = dist
+                            target = pet
+                        end
                     end
                 end
             end
             
             if target then
+                print("🎯 Capturando:", target.Name)
                 local success = CapturePet(target)
                 if success then
                     capturedPets[target] = true
-                    BringPetToBase(target)
+                    print("✅ Capturado:", target.Name)
                 end
+                task.wait(1.5)
+            else
+                task.wait(0.5)
             end
-            
-            task.wait(Settings.AutoCapture.Delay)
         end)
         task.wait(0.1)
     end
 end
 
 -- ========================================
--- SISTEMA ESP - CORRIGIDO
+-- MONITORAMENTO DE PETS
 -- ========================================
-local function CreateESPObject(pet, typeName)
-    if not pet or not pet:IsA("Model") then return end
-    if not pet:FindFirstChild("HumanoidRootPart") then return end
-    
-    local config = Settings.ESP[typeName]
-    if not config or not config.Enabled then 
-        -- Remove ESP se existir
-        if petESP[pet] then
-            petESP[pet]:Destroy()
-            petESP[pet] = nil
-        end
-        return 
-    end
-    
-    -- Se já tem ESP, atualiza
-    if petESP[pet] then
-        local highlight = petESP[pet]
-        highlight.FillColor = config.Color
-        highlight.FillTransparency = 0.3
-        highlight.Enabled = true
-        return
-    end
-    
-    -- Cria novo ESP
-    local highlight = Instance.new("Highlight")
-    highlight.Parent = pet
-    highlight.FillColor = config.Color
-    highlight.FillTransparency = 0.3
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.OutlineTransparency = 0.2
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Enabled = true
-    
-    petESP[pet] = highlight
-    print("✅ ESP criado para:", pet.Name)
-end
-
-local function UpdateESPVisibility()
-    local anyESPEnabled = Settings.ESP.Divinos.Enabled or Settings.ESP.Misticos.Enabled or Settings.ESP.Chefes.Enabled
-    
-    if not anyESPEnabled then
-        -- Remove todos os ESPs
-        for pet, highlight in pairs(petESP) do
-            if highlight and highlight:IsA("Highlight") then
-                highlight:Destroy()
-            end
-        end
-        petESP = {}
-        return
-    end
-    
-    -- Atualiza cada pet
-    for _, pet in pairs(petList) do
-        if pet and pet:IsA("Model") and pet:FindFirstChild("HumanoidRootPart") then
-            local petType = GetPetType(pet)
-            if petType and Settings.ESP[petType].Enabled then
-                local dist = GetDistance(RootPart and RootPart.Position, pet.HumanoidRootPart.Position)
-                local config = Settings.ESP[petType]
-                
-                -- Só cria ESP se estiver dentro da distância
-                if dist <= config.MaxDistance then
-                    CreateESPObject(pet, petType)
-                else
-                    -- Remove ESP se estiver longe
-                    if petESP[pet] then
-                        petESP[pet]:Destroy()
-                        petESP[pet] = nil
-                    end
-                end
-            else
-                -- Remove ESP se o tipo não está ativo
-                if petESP[pet] then
-                    petESP[pet]:Destroy()
-                    petESP[pet] = nil
-                end
-            end
-        end
-    end
-end
-
--- ========================================
--- DETECÇÃO DE PETS
--- ========================================
-local function OnPetAdded(pet)
-    if IsPet(pet) then
-        table.insert(petList, pet)
-        print("🔍 Pet detectado:", pet.Name)
-        
-        -- Atualiza ESP imediatamente
-        task.spawn(function()
-            task.wait(0.1)
-            UpdateESPVisibility()
-        end)
-    end
-end
-
-local function OnPetRemoved(pet)
-    for i, p in ipairs(petList) do
-        if p == pet then
-            table.remove(petList, i)
-            break
-        end
-    end
-    
-    if petESP[pet] then
-        petESP[pet]:Destroy()
-        petESP[pet] = nil
-    end
-end
-
-local function SetupPetDetection()
-    -- Limpa lista
-    petList = {}
-    
-    -- Detecta pets existentes
-    for _, pet in pairs(workspace:GetDescendants()) do
-        if IsPet(pet) then
-            table.insert(petList, pet)
-            print("🔍 Pet encontrado:", pet.Name)
-        end
-    end
-    
-    -- Conecta eventos
-    workspace.DescendantAdded:Connect(OnPetAdded)
-    workspace.DescendantRemoving:Connect(OnPetRemoved)
-    
-    -- Loop de atualização do ESP
+local function MonitorPets()
     task.spawn(function()
         while true do
             task.wait(0.5)
-            UpdateESPVisibility()
+            if espActive then
+                UpdateESP()
+            end
         end
     end)
-    
-    -- Atualiza ESP inicial
-    task.wait(0.5)
-    UpdateESPVisibility()
 end
 
 -- ========================================
--- CRIAÇÃO DA GUI - CORRIGIDA
+-- CRIAÇÃO DA GUI SIMPLES
 -- ========================================
 local function CreateGUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SixSevenGUI"
     screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
-    screenGui.IgnoreGuiInset = true
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 420, 0, 500)
-    mainFrame.Position = UDim2.new(0.5, -210, 0.5, -250)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(18, 16, 32)
+    mainFrame.Size = UDim2.new(0, 350, 0, 300)
+    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
-    mainFrame.ClipsDescendants = true
     mainFrame.Active = true
     mainFrame.Draggable = true
 
@@ -328,333 +251,128 @@ local function CreateGUI()
     corner.Parent = mainFrame
     corner.CornerRadius = UDim.new(0, 12)
 
-    local border = Instance.new("Frame")
-    border.Parent = mainFrame
-    border.Size = UDim2.new(1, 0, 1, 0)
-    border.BackgroundTransparency = 1
-    border.BorderSizePixel = 2
-    border.BorderColor3 = Color3.fromRGB(120, 80, 220)
-
-    -- ========== TÍTULO ==========
-    local titleBar = Instance.new("Frame")
-    titleBar.Parent = mainFrame
-    titleBar.Size = UDim2.new(1, 0, 0, 45)
-    titleBar.BackgroundColor3 = Color3.fromRGB(40, 30, 70)
-    titleBar.BackgroundTransparency = 0.2
-    titleBar.BorderSizePixel = 0
-
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.Parent = titleBar
-    titleCorner.CornerRadius = UDim.new(0, 12)
-
+    -- Título
     local title = Instance.new("TextLabel")
-    title.Parent = titleBar
-    title.Size = UDim2.new(1, -100, 1, 0)
-    title.Position = UDim2.new(0, 15, 0, 0)
-    title.BackgroundTransparency = 1
+    title.Parent = mainFrame
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundColor3 = Color3.fromRGB(40, 30, 70)
+    title.BackgroundTransparency = 0.3
     title.Text = "✧ Six Seven"
     title.TextColor3 = Color3.fromRGB(190, 160, 255)
-    title.TextSize = 22
+    title.TextSize = 20
     title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
 
-    local minBtn = Instance.new("TextButton")
-    minBtn.Parent = titleBar
-    minBtn.Size = UDim2.new(0, 35, 1, 0)
-    minBtn.Position = UDim2.new(1, -75, 0, 0)
-    minBtn.BackgroundColor3 = Color3.fromRGB(60, 50, 90)
-    minBtn.BackgroundTransparency = 0.4
-    minBtn.Text = "─"
-    minBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    minBtn.TextSize = 22
-    minBtn.BorderSizePixel = 0
-    minBtn.Font = Enum.Font.Gotham
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.Parent = title
+    titleCorner.CornerRadius = UDim.new(0, 12)
 
-    local minCorner = Instance.new("UICorner")
-    minCorner.Parent = minBtn
-    minCorner.CornerRadius = UDim.new(0, 6)
-
+    -- Botão Fechar
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Parent = titleBar
-    closeBtn.Size = UDim2.new(0, 35, 1, 0)
-    closeBtn.Position = UDim2.new(1, -35, 0, 0)
+    closeBtn.Parent = mainFrame
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -35, 0, 5)
     closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-    closeBtn.BackgroundTransparency = 0.4
+    closeBtn.BackgroundTransparency = 0.5
     closeBtn.Text = "✕"
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextSize = 18
+    closeBtn.TextSize = 16
     closeBtn.BorderSizePixel = 0
     closeBtn.Font = Enum.Font.Gotham
-
+    
     local closeCorner = Instance.new("UICorner")
     closeCorner.Parent = closeBtn
-    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.CornerRadius = UDim.new(1, 0)
 
-    -- ========== ABAS ==========
-    local tabContainer = Instance.new("Frame")
-    tabContainer.Parent = mainFrame
-    tabContainer.Size = UDim2.new(1, 0, 0, 40)
-    tabContainer.Position = UDim2.new(0, 0, 0, 45)
-    tabContainer.BackgroundTransparency = 1
+    -- Container de conteúdo
+    local content = Instance.new("Frame")
+    content.Parent = mainFrame
+    content.Size = UDim2.new(1, -20, 1, -60)
+    content.Position = UDim2.new(0, 10, 0, 50)
+    content.BackgroundTransparency = 1
 
-    local tabs = {"Auto Farm", "ESP"}
-    local tabButtons = {}
-    local tabContents = {}
+    -- ========== BOTÃO ESP ==========
+    local espBtn = Instance.new("TextButton")
+    espBtn.Parent = content
+    espBtn.Size = UDim2.new(1, 0, 0, 45)
+    espBtn.Position = UDim2.new(0, 0, 0, 0)
+    espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+    espBtn.Text = "🔴 ESP: DESLIGADO"
+    espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    espBtn.TextSize = 16
+    espBtn.Font = Enum.Font.GothamBold
+    espBtn.BorderSizePixel = 0
+    
+    local espCorner = Instance.new("UICorner")
+    espCorner.Parent = espBtn
+    espCorner.CornerRadius = UDim.new(0, 8)
 
-    for i, name in ipairs(tabs) do
-        local btn = Instance.new("TextButton")
-        btn.Parent = tabContainer
-        btn.Size = UDim2.new(1 / #tabs, 0, 1, 0)
-        btn.Position = UDim2.new((i - 1) / #tabs, 0, 0, 0)
-        btn.BackgroundColor3 = (i == 1) and Color3.fromRGB(120, 80, 220) or Color3.fromRGB(30, 28, 50)
-        btn.BackgroundTransparency = 0.3
-        btn.Text = name
-        btn.TextColor3 = Color3.fromRGB(230, 230, 255)
-        btn.TextSize = 15
-        btn.Font = Enum.Font.GothamBold
-        btn.BorderSizePixel = 0
-        local btnCorner = Instance.new("UICorner")
-        btnCorner.Parent = btn
-        btnCorner.CornerRadius = UDim.new(0, 6)
-        tabButtons[name] = btn
-    end
-
-    local contentContainer = Instance.new("Frame")
-    contentContainer.Parent = mainFrame
-    contentContainer.Size = UDim2.new(1, -20, 1, -100)
-    contentContainer.Position = UDim2.new(0, 10, 0, 90)
-    contentContainer.BackgroundTransparency = 1
-
-    -- ========== FUNÇÕES DE CRIAÇÃO ==========
-    local function CreateToggle(parent, text, default, callback)
-        local container = Instance.new("Frame")
-        container.Parent = parent
-        container.Size = UDim2.new(1, 0, 0, 40)
-        container.BackgroundTransparency = 1
-        
-        local label = Instance.new("TextLabel")
-        label.Parent = container
-        label.Size = UDim2.new(1, -70, 1, 0)
-        label.Position = UDim2.new(0, 5, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = text
-        label.TextColor3 = Color3.fromRGB(220, 220, 255)
-        label.TextSize = 14
-        label.Font = Enum.Font.Gotham
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        
-        local toggleBtn = Instance.new("TextButton")
-        toggleBtn.Parent = container
-        toggleBtn.Size = UDim2.new(0, 55, 0, 28)
-        toggleBtn.Position = UDim2.new(1, -60, 0, 6)
-        toggleBtn.BackgroundColor3 = default and Color3.fromRGB(120, 80, 220) or Color3.fromRGB(60, 60, 80)
-        toggleBtn.Text = default and "ON" or "OFF"
-        toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        toggleBtn.TextSize = 13
-        toggleBtn.Font = Enum.Font.GothamBold
-        toggleBtn.BorderSizePixel = 0
-        
-        local toggleCorner = Instance.new("UICorner")
-        toggleCorner.Parent = toggleBtn
-        toggleCorner.CornerRadius = UDim.new(1, 0)
-        
-        local state = default
-        
-        toggleBtn.MouseButton1Click:Connect(function()
-            state = not state
-            toggleBtn.BackgroundColor3 = state and Color3.fromRGB(120, 80, 220) or Color3.fromRGB(60, 60, 80)
-            toggleBtn.Text = state and "ON" or "OFF"
-            if callback then callback(state) end
-        end)
-        
-        return toggleBtn
-    end
-
-    local function CreateSlider(parent, text, min, max, default, callback)
-        local container = Instance.new("Frame")
-        container.Parent = parent
-        container.Size = UDim2.new(1, 0, 0, 55)
-        container.BackgroundTransparency = 1
-        
-        local label = Instance.new("TextLabel")
-        label.Parent = container
-        label.Size = UDim2.new(1, 0, 0, 22)
-        label.Position = UDim2.new(0, 0, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Text = text .. ": " .. tostring(default)
-        label.TextColor3 = Color3.fromRGB(220, 220, 255)
-        label.TextSize = 13
-        label.Font = Enum.Font.Gotham
-        
-        local slider = Instance.new("Frame")
-        slider.Parent = container
-        slider.Size = UDim2.new(1, 0, 0, 5)
-        slider.Position = UDim2.new(0, 0, 0, 28)
-        slider.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        slider.BorderSizePixel = 0
-        
-        local sliderCorner = Instance.new("UICorner")
-        sliderCorner.Parent = slider
-        sliderCorner.CornerRadius = UDim.new(1, 0)
-        
-        local fill = Instance.new("Frame")
-        fill.Parent = slider
-        fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-        fill.BackgroundColor3 = Color3.fromRGB(120, 80, 220)
-        fill.BorderSizePixel = 0
-        
-        local fillCorner = Instance.new("UICorner")
-        fillCorner.Parent = fill
-        fillCorner.CornerRadius = UDim.new(1, 0)
-        
-        local handle = Instance.new("TextButton")
-        handle.Parent = slider
-        handle.Size = UDim2.new(0, 16, 0, 16)
-        handle.Position = UDim2.new((default - min) / (max - min), -8, 0, -5.5)
-        handle.BackgroundColor3 = Color3.fromRGB(160, 130, 255)
-        handle.Text = ""
-        handle.BorderSizePixel = 0
-        
-        local handleCorner = Instance.new("UICorner")
-        handleCorner.Parent = handle
-        handleCorner.CornerRadius = UDim.new(1, 0)
-        
-        local value = default
-        local dragging = false
-        
-        handle.MouseButton1Down:Connect(function()
-            dragging = true
-        end)
-        
-        UserInputService.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
+    espBtn.MouseButton1Click:Connect(function()
+        espActive = not espActive
+        espBtn.Text = espActive and "🟢 ESP: LIGADO" or "🔴 ESP: DESLIGADO"
+        espBtn.BackgroundColor3 = espActive and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
+        print("ESP:", espActive and "ON" or "OFF")
+        if espActive then
+            UpdateESP()
+        else
+            for pet, _ in pairs(espObjects) do
+                RemoveESP(pet)
             end
-        end)
-        
-        UserInputService.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local mousePos = input.Position.X
-                local sliderPos = slider.AbsolutePosition.X
-                local sliderWidth = slider.AbsoluteSize.X
-                if sliderWidth > 0 then
-                    local percent = math.clamp((mousePos - sliderPos) / sliderWidth, 0, 1)
-                    value = min + (max - min) * percent
-                    value = math.round(value * 10) / 10
-                    fill.Size = UDim2.new(percent, 0, 1, 0)
-                    handle.Position = UDim2.new(percent, -8, 0, -5.5)
-                    label.Text = text .. ": " .. tostring(value)
-                    if callback then callback(value) end
-                end
-            end
-        end)
-        
-        return container
-    end
+            espObjects = {}
+        end
+    end)
 
-    -- ========== ABA AUTO FARM ==========
-    local autoContent = Instance.new("ScrollingFrame")
-    autoContent.Parent = contentContainer
-    autoContent.Size = UDim2.new(1, 0, 1, 0)
-    autoContent.BackgroundTransparency = 1
-    autoContent.ScrollBarThickness = 4
-    autoContent.CanvasSize = UDim2.new(0, 0, 0, 250)
+    -- ========== BOTÃO AUTO CAPTURE ==========
+    local autoBtn = Instance.new("TextButton")
+    autoBtn.Parent = content
+    autoBtn.Size = UDim2.new(1, 0, 0, 45)
+    autoBtn.Position = UDim2.new(0, 0, 0, 55)
+    autoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+    autoBtn.Text = "🔴 Auto Capture: DESLIGADO"
+    autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    autoBtn.TextSize = 16
+    autoBtn.Font = Enum.Font.GothamBold
+    autoBtn.BorderSizePixel = 0
+    
+    local autoCorner = Instance.new("UICorner")
+    autoCorner.Parent = autoBtn
+    autoCorner.CornerRadius = UDim.new(0, 8)
 
-    local autoToggle = CreateToggle(autoContent, "⚡ Auto Capturar Pets", false, function(state)
-        Settings.AutoCapture.Enabled = state
-        if state then
+    autoBtn.MouseButton1Click:Connect(function()
+        autoCapture = not autoCapture
+        autoBtn.Text = autoCapture and "🟢 Auto Capture: LIGADO" or "🔴 Auto Capture: DESLIGADO"
+        autoBtn.BackgroundColor3 = autoCapture and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
+        print("Auto Capture:", autoCapture and "ON" or "OFF")
+        if autoCapture then
             if not autoCaptureRunning then
                 autoCaptureRunning = true
                 task.spawn(AutoCaptureLoop)
-                print("✅ Auto Capture ATIVADO!")
             end
         else
             autoCaptureRunning = false
-            print("⏹️ Auto Capture DESATIVADO!")
         end
     end)
 
-    local delaySlider = CreateSlider(autoContent, "⏱️ Delay entre capturas", 0.5, 5, 1.5, function(value)
-        Settings.AutoCapture.Delay = value
-    end)
-
-    local rareToggle = CreateToggle(autoContent, "⭐ Priorizar pets raros", true)
-    local ignoreToggle = CreateToggle(autoContent, "🚫 Ignorar pets capturados", true)
-
-    tabContents["Auto Farm"] = autoContent
-
-    -- ========== ABA ESP ==========
-    local espContent = Instance.new("ScrollingFrame")
-    espContent.Parent = contentContainer
-    espContent.Size = UDim2.new(1, 0, 1, 0)
-    espContent.BackgroundTransparency = 1
-    espContent.ScrollBarThickness = 4
-    espContent.CanvasSize = UDim2.new(0, 0, 0, 350)
-    espContent.Visible = false
-
-    -- ESP Divinos
-    local divinoToggle = CreateToggle(espContent, "👑 ESP Divinos", false, function(state)
-        Settings.ESP.Divinos.Enabled = state
-        print("👑 ESP Divinos:", state and "ON" or "OFF")
-        UpdateESPVisibility()
-    end)
-
-    local divinoDist = CreateSlider(espContent, "📏 Distância Divinos", 50, 300, 150, function(value)
-        Settings.ESP.Divinos.MaxDistance = value
-        UpdateESPVisibility()
-    end)
-
-    -- ESP Místicos
-    local misticoToggle = CreateToggle(espContent, "🔮 ESP Místicos", false, function(state)
-        Settings.ESP.Misticos.Enabled = state
-        print("🔮 ESP Místicos:", state and "ON" or "OFF")
-        UpdateESPVisibility()
-    end)
-
-    local misticoDist = CreateSlider(espContent, "📏 Distância Místicos", 50, 300, 150, function(value)
-        Settings.ESP.Misticos.MaxDistance = value
-        UpdateESPVisibility()
-    end)
-
-    -- ESP Chefes
-    local chefeToggle = CreateToggle(espContent, "👹 ESP Chefes", false, function(state)
-        Settings.ESP.Chefes.Enabled = state
-        print("👹 ESP Chefes:", state and "ON" or "OFF")
-        UpdateESPVisibility()
-    end)
-
-    local chefeDist = CreateSlider(espContent, "📏 Distância Chefes", 50, 300, 150, function(value)
-        Settings.ESP.Chefes.MaxDistance = value
-        UpdateESPVisibility()
-    end)
-
-    tabContents["ESP"] = espContent
-
-    -- ========== CONTROLE DE ABAS ==========
-    local function SwitchTab(tabName)
-        for name, content in pairs(tabContents) do
-            content.Visible = (name == tabName)
-        end
-        for name, btn in pairs(tabButtons) do
-            btn.BackgroundColor3 = (name == tabName) and Color3.fromRGB(120, 80, 220) or Color3.fromRGB(30, 28, 50)
-        end
-    end
-
-    for name, btn in pairs(tabButtons) do
-        btn.MouseButton1Click:Connect(function()
-            SwitchTab(name)
-        end)
-    end
+    -- ========== STATUS ==========
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Parent = content
+    statusLabel.Size = UDim2.new(1, 0, 0, 30)
+    statusLabel.Position = UDim2.new(0, 0, 0, 110)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "📊 Status: Pronto"
+    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
+    statusLabel.TextSize = 14
+    statusLabel.Font = Enum.Font.Gotham
 
     -- ========== BOTÃO FLUTUANTE ==========
     local floatBtn = Instance.new("TextButton")
     floatBtn.Parent = screenGui
-    floatBtn.Size = UDim2.new(0, 55, 0, 55)
-    floatBtn.Position = UDim2.new(0.93, -27, 0.93, -27)
+    floatBtn.Size = UDim2.new(0, 50, 0, 50)
+    floatBtn.Position = UDim2.new(0.93, -25, 0.93, -25)
     floatBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 220)
     floatBtn.Text = "✧"
     floatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    floatBtn.TextSize = 30
+    floatBtn.TextSize = 28
     floatBtn.Font = Enum.Font.GothamBold
     floatBtn.BorderSizePixel = 0
     floatBtn.Visible = false
@@ -673,15 +391,19 @@ local function CreateGUI()
         floatBtn.Visible = true
     end
 
-    minBtn.MouseButton1Click:Connect(function()
-        mainFrame.Visible = false
-        floatBtn.Visible = true
-    end)
-
     closeBtn.MouseButton1Click:Connect(CloseMenu)
     floatBtn.MouseButton1Click:Connect(OpenMenu)
 
-    print("✅ GUI criada com sucesso!")
+    -- Atualiza status periodicamente
+    task.spawn(function()
+        while true do
+            task.wait(2)
+            local petCount = #FindAllPets()
+            statusLabel.Text = "📊 Pets no mapa: " .. petCount .. " | ESP: " .. (espActive and "ON" or "OFF")
+        end
+    end)
+
+    print("✅ GUI criada!")
     return screenGui
 end
 
@@ -689,36 +411,21 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - CARREGANDO...")
+print("  ✧ SIX SEVEN - ULTRA SIMPLES")
 print("========================================")
 
--- Cria a GUI
+-- Cria GUI
 pcall(CreateGUI)
 
--- Inicializa detecção de pets
-pcall(SetupPetDetection)
+-- Inicia monitoramento de pets
+MonitorPets()
 
--- Atualiza RootPart quando personagem respawnar
+-- Atualiza quando personagem respawna
 Player.CharacterAdded:Connect(function(newChar)
     Character = newChar
     RootPart = newChar:FindFirstChild("HumanoidRootPart")
-    print("🔄 Personagem respawnou!")
-    -- Reativa ESP após respawn
-    task.wait(1)
-    UpdateESPVisibility()
+    print("🔄 Respawnou!")
 end)
 
--- Atualiza ESP a cada 2 segundos (garantia)
-task.spawn(function()
-    while true do
-        task.wait(2)
-        UpdateESPVisibility()
-    end
-end)
-
-print("========================================")
-print("  ✅ SIX SEVEN PRONTO!")
-print("  ✅ Auto Farm: OFF")
-print("  ✅ ESP: OFF")
-print("  ✅ Atualize o script no GitHub!")
+print("✅ Script carregado!")
 print("========================================")
