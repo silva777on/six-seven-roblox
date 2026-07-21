@@ -1,9 +1,9 @@
 --[[
-    Six Seven - Versão Definitiva (Todos os Pets)
+    Six Seven - Corrigido (Ignora Coruja e NPCs)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN DEFINITIVO...")
+print("🔄 CARREGANDO SIX SEVEN CORRIGIDO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -41,16 +41,27 @@ local autoCaptureRunning = false
 local capturedPets = {}
 local espObjects = {}
 local petPositions = {}
-local allPets = {}
 
 -- ========================================
--- LISTA DE NPCS PARA IGNORAR
+-- LISTA DE NPCS PARA IGNORAR (COM CORUJA)
 -- ========================================
 local npcNames = {
+    -- NPCS genéricos
     "npc", "humano", "personagem", "vendedor", "lojista", 
     "guarda", "civil", "aldeao", "comerciante", "treinador",
     "professor", "mestre", "ancião", "mercador", "homem", "mulher",
-    "crianca", "adulto", "velho", "jovem"
+    "crianca", "adulto", "velho", "jovem",
+    
+    -- ANIMAIS/NPCS QUE NÃO SÃO PETS
+    "coruja", "owl", "cavalo", "vaca", "boi", "ovelha", "cabra",
+    "gato", "cachorro", "coelho", "pato", "galinha", "porco",
+    "lobo", "urso", "raposa", "veado", "javali", "onça",
+    "papagaio", "tucano", "arara", "aguia", "falcão",
+    
+    -- OBJETOS DO MAPA
+    "barraca", "tenda", "loja", "shop", "vender", "sell",
+    "placa", "sign", "banco", "bank", "fonte", "fountain",
+    "arvore", "tree", "pedra", "rock", "flor", "flower"
 }
 
 local function IsNPC(obj)
@@ -65,53 +76,62 @@ local function IsNPC(obj)
 end
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR TODOS OS PETS
+-- FUNÇÃO PARA VERIFICAR SE É PET DE VERDADE
+-- ========================================
+local function IsRealPet(obj)
+    if not obj then return false end
+    
+    -- Ignora se for NPC
+    if IsNPC(obj) then return false end
+    
+    -- Ignora o jogador
+    if obj == Character then return false end
+    if obj == Player.Character then return false end
+    if Players:GetPlayerFromCharacter(obj) then return false end
+    
+    local name = obj.Name:lower()
+    
+    -- Ignora objetos do cenário
+    local ignoreWords = {"base", "floor", "wall", "ground", "tree", "rock", "stone", "grass", 
+                         "house", "building", "fence", "gate", "door", "window", "roof",
+                         "barraca", "tenda", "loja", "shop", "placa", "sign", "banco"}
+    for _, word in pairs(ignoreWords) do
+        if name:find(word) then return false end
+    end
+    
+    -- Verifica se tem partes
+    local hasParts = false
+    for _, child in pairs(obj:GetChildren()) do
+        if child:IsA("BasePart") then
+            hasParts = true
+            break
+        end
+    end
+    if not hasParts then return false end
+    
+    -- Verifica se tem Humanoid (pets têm)
+    if not obj:FindFirstChild("Humanoid") then return false end
+    
+    return true
+end
+
+-- ========================================
+-- FUNÇÃO PARA ENCONTRAR PETS
 -- ========================================
 local function FindAllPets()
     local pets = {}
     
     for _, obj in pairs(workspace:GetDescendants()) do
-        -- Procura por modelos com HumanoidRootPart
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             
-            -- Ignora o jogador
-            if obj == Character then continue end
-            if obj == Player.Character then continue end
-            if Players:GetPlayerFromCharacter(obj) then continue end
+            -- Verifica se é um pet de verdade
+            if not IsRealPet(obj) then continue end
             
-            -- Ignora NPCs
-            if IsNPC(obj) then continue end
-            
-            local name = obj.Name:lower()
-            
-            -- Ignora objetos do cenário
-            if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
-                continue
-            end
-            if name:find("tree") or name:find("rock") or name:find("stone") or name:find("grass") then
-                continue
-            end
-            if name:find("house") or name:find("building") or name:find("fence") then
-                continue
-            end
-            
-            -- Verifica se tem partes (todo modelo tem)
-            local hasParts = false
-            for _, child in pairs(obj:GetChildren()) do
-                if child:IsA("BasePart") then
-                    hasParts = true
-                    break
-                end
-            end
-            
-            if not hasParts then continue end
-            
-            -- Verifica se está perto (range)
             local hrp = obj:FindFirstChild("HumanoidRootPart")
             if hrp and RootPart then
                 local dist = (RootPart.Position - hrp.Position).Magnitude
                 
-                -- Adiciona se estiver dentro do range OU se estiver se movendo
+                -- Adiciona se estiver dentro do range
                 if dist < Settings.AutoCapture.Range then
                     table.insert(pets, obj)
                 end
@@ -123,32 +143,25 @@ local function FindAllPets()
 end
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR PELO NOME (FALLBACK)
+-- FUNÇÃO PARA ENCONTRAR PETS POR NOME (ESPECÍFICO)
 -- ========================================
 local function FindPetsByName()
     local pets = {}
     
-    -- Lista de palavras que indicam pet
-    local petKeywords = {
-        "capivara", "capy", "cavalo", "vaca", "boi", "ovelha", "cabra",
-        "gato", "cachorro", "coelho", "pato", "galinha", "porco",
-        "dragao", "fada", "elfo", "golem", "esqueleto", "zumbi",
-        "lobo", "urso", "raposa", "veado", "javali", "onca",
-        "papagaio", "tucano", "arara", "aguia", "falcão",
-        "pet", "creature", "monster", "animal", "wild",
-        "divino", "mistico", "chefe", "boss", "lendario", "epico",
-        "capture", "domestique", "domestico", "selvagem"
+    -- Lista de NOMES REAIS de pets (que você vê no jogo)
+    local petNames = {
+        "capivara", "capy", 
+        -- Adicione aqui os nomes dos pets que você vê no jogo
+        -- Exemplo: "dragao", "fada", "golem", etc.
     }
     
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
-            if obj == Character then continue end
-            if Players:GetPlayerFromCharacter(obj) then continue end
-            if IsNPC(obj) then continue end
+            if not IsRealPet(obj) then continue end
             
             local name = obj.Name:lower()
-            for _, keyword in pairs(petKeywords) do
-                if name:find(keyword) then
+            for _, petName in pairs(petNames) do
+                if name:find(petName) then
                     table.insert(pets, obj)
                     break
                 end
@@ -163,46 +176,26 @@ end
 -- FUNÇÃO COMBINADA
 -- ========================================
 local function GetAllPets()
-    -- Primeiro tenta encontrar pelo nome (mais específico)
-    local byName = FindPetsByName()
+    local pets = FindAllPets()
     
-    -- Depois tenta encontrar por movimento
-    local moving = FindAllPets()
-    
-    -- Combina as duas listas (sem duplicatas)
-    local combined = {}
-    local seen = {}
-    
-    for _, pet in pairs(byName) do
-        if not seen[pet] then
-            seen[pet] = true
-            table.insert(combined, pet)
-        end
+    -- Se não encontrou pets pelo movimento, tenta por nome
+    if #pets == 0 then
+        pets = FindPetsByName()
     end
     
-    for _, pet in pairs(moving) do
-        if not seen[pet] then
-            seen[pet] = true
-            table.insert(combined, pet)
-        end
-    end
-    
-    return combined
+    return pets
 end
 
 -- ========================================
--- USAR LAÇO (SIMPLES)
+-- USAR LAÇO
 -- ========================================
 local function UseLasso()
-    -- Tecla 1
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
         task.wait(0.05)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-        return true
     end)
     
-    -- Procura o laço
     local backpack = Player:FindFirstChild("Backpack")
     if backpack then
         for _, item in pairs(backpack:GetChildren()) do
@@ -219,7 +212,6 @@ local function UseLasso()
             end
         end
     end
-    
     return false
 end
 
@@ -258,7 +250,6 @@ local function CapturePet(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
-    -- Teleporta
     if RootPart then
         local targetPos = hrp.Position + Vector3.new(0, 2, 0)
         pcall(function()
@@ -267,11 +258,9 @@ local function CapturePet(pet)
         task.wait(0.2)
     end
     
-    -- Usa laço
     UseLasso()
     task.wait(0.2)
     
-    -- Clica
     local success = ClickOnPet(pet)
     task.wait(0.5)
     
@@ -352,10 +341,11 @@ local function AutoCaptureLoop()
 end
 
 -- ========================================
--- ESP
+-- ESP (CORRIGIDO)
 -- ========================================
 local function CreateESP(pet)
     if not pet or espObjects[pet] then return end
+    if not IsRealPet(pet) then return end
     
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
@@ -391,6 +381,8 @@ local function CreateESP(pet)
         Billboard = billboard,
         Label = label
     }
+    
+    print("✅ ESP: " .. pet.Name)
 end
 
 local function RemoveESP(pet)
@@ -411,15 +403,18 @@ local function UpdateESP()
     end
     
     local pets = GetAllPets()
+    
     for _, pet in pairs(pets) do
         if pet and pet:IsA("Model") and pet:FindFirstChild("HumanoidRootPart") then
-            local hrp = pet.HumanoidRootPart
-            if RootPart then
-                local dist = (RootPart.Position - hrp.Position).Magnitude
-                if dist <= Settings.ESP.MaxDistance then
-                    CreateESP(pet)
-                else
-                    RemoveESP(pet)
+            if IsRealPet(pet) then
+                local hrp = pet.HumanoidRootPart
+                if RootPart then
+                    local dist = (RootPart.Position - hrp.Position).Magnitude
+                    if dist <= Settings.ESP.MaxDistance then
+                        CreateESP(pet)
+                    else
+                        RemoveESP(pet)
+                    end
                 end
             end
         end
@@ -606,7 +601,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - DEFINITIVO")
+print("  ✧ SIX SEVEN - CORRIGIDO")
 print("========================================")
 
 pcall(CreateMenu)
@@ -621,6 +616,6 @@ end)
 
 print("========================================")
 print("  ✅ PRONTO!")
-print("  📌 ESP: Liga/Desliga")
-print("  📌 Auto: Teleporta + Laço + Clique")
+print("  📌 ESP: Mostra só pets")
+print("  📌 Auto: Ignora coruja e NPCs")
 print("========================================")
