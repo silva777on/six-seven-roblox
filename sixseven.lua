@@ -1,9 +1,9 @@
 --[[
-    Six Seven - Versão Adaptada
-    Baseado no script que você tem
+    Six Seven - Versão Pets
+    Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN ADAPTADO...")
+print("🔄 CARREGANDO SIX SEVEN - VERSÃO PETS...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -36,33 +36,62 @@ local autoCaptureRunning = false
 local capturedPets = {}
 local espObjects = {}
 local petList = {}
-local allModels = {}
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR PETS (BASEADO NO SCRIPT OFUSCADO)
+-- FUNÇÃO ESPECIAL PARA ENCONTRAR PETS
 -- ========================================
 local function FindAllPets()
     local pets = {}
     
-    -- Procura por modelos com HumanoidRootPart e Humanoid
-    -- (igual ao script ofuscado faz)
+    -- Procura por QUALQUER modelo que não seja NPC
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+            
             -- IGNORA O JOGADOR
             if obj == Character then continue end
             if obj == Player.Character then continue end
             if Players:GetPlayerFromCharacter(obj) then continue end
             
-            -- IGNORA OBJETOS COMUNS
             local name = obj.Name:lower()
+            
+            -- IGNORA NPCS PELO NOME
+            if name:find("npc") then continue end
+            if name:find("humano") then continue end
+            if name:find("personagem") then continue end
+            
+            -- IGNORA OBJETOS COMUNS
             if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
                 continue
             end
             
-            -- SE TEM HUMANIDO, É PROVAVELMENTE UM PET OU NPC
-            if obj:FindFirstChild("Humanoid") then
+            -- VERIFICA SE TEM CLICKDETECTOR (pets geralmente têm)
+            local hasClickDetector = false
+            local hasBillboard = false
+            
+            for _, child in pairs(obj:GetChildren()) do
+                if child:IsA("ClickDetector") then
+                    hasClickDetector = true
+                end
+                if child:IsA("BillboardGui") then
+                    hasBillboard = true
+                end
+            end
+            
+            -- SE TEM CLICKDETECTOR OU BILLBOARD, É PROVAVELMENTE UM PET
+            if hasClickDetector or hasBillboard then
                 table.insert(pets, obj)
                 print("🐾 Pet encontrado: " .. obj.Name)
+                continue
+            end
+            
+            -- SE TEM NOME DE PET
+            local petKeywords = {"pet", "creature", "monster", "animal", "wild", "capture", "domestique", "divino", "mistico", "chefe", "boss", "gato", "cachorro", "dragao", "fada"}
+            for _, keyword in pairs(petKeywords) do
+                if name:find(keyword) then
+                    table.insert(pets, obj)
+                    print("🐾 Pet encontrado: " .. obj.Name)
+                    break
+                end
             end
         end
     end
@@ -71,7 +100,22 @@ local function FindAllPets()
 end
 
 -- ========================================
--- SISTEMA DE CAPTURA (BASEADO NO SCRIPT OFUSCADO)
+-- FUNÇÃO PARA ENCONTRAR TODOS OS MODELOS (DIAGNÓSTICO)
+-- ========================================
+local function FindAllModels()
+    local models = {}
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+            if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
+                table.insert(models, obj)
+            end
+        end
+    end
+    return models
+end
+
+-- ========================================
+-- SISTEMA DE CAPTURA
 -- ========================================
 local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
@@ -84,10 +128,9 @@ local function CapturePet(pet)
         task.wait(0.1)
     end
     
-    -- Tenta encontrar o Remote (igual ao script ofuscado)
+    -- Tenta encontrar o Remote
     local remote = ReplicatedStorage:FindFirstChild("CapturePet") 
-        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Capture")
-        or ReplicatedStorage:FindFirstChild("Events"):FindFirstChild("Capture")
+        or (ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("Capture"))
         or ReplicatedStorage:FindFirstChild("RemoteEvent")
     
     if remote then
@@ -99,7 +142,7 @@ local function CapturePet(pet)
         return true
     end
     
-    -- Alternativa: tenta clicar no pet
+    -- Tenta clicar
     pcall(function()
         local mouse = Player:GetMouse()
         if mouse then
@@ -131,7 +174,6 @@ local function BringPetToBase(pet)
     
     local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet")
         or ReplicatedStorage:FindFirstChild("DropPet")
-        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Release")
     
     if releaseRemote then
         pcall(function() releaseRemote:FireServer(pet) end)
@@ -160,6 +202,7 @@ local function AutoCaptureLoop()
             end
             
             if target then
+                print("🎯 Capturando: " .. target.Name)
                 local success = CapturePet(target)
                 if success then
                     capturedPets[target] = true
@@ -194,7 +237,6 @@ local function CreateESP(pet)
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Enabled = true
     
-    -- Nome flutuante
     local billboard = Instance.new("BillboardGui")
     billboard.Parent = hrp
     billboard.Size = UDim2.new(0, 150, 0, 30)
@@ -212,7 +254,6 @@ local function CreateESP(pet)
     label.Font = Enum.Font.GothamBold
     label.TextScaled = true
     
-    -- Distância
     local distLabel = Instance.new("TextLabel")
     distLabel.Parent = billboard
     distLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -270,7 +311,6 @@ local function UpdateESP()
         end
     end
     
-    -- Remove ESP de pets que não existem mais
     local currentPets = {}
     for _, pet in pairs(pets) do
         currentPets[pet] = true
@@ -295,14 +335,16 @@ local function StartMonitoring()
         end
     end)
     
-    -- Monitora novos objetos no mapa
     workspace.DescendantAdded:Connect(function(obj)
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
-                print("🔍 Novo objeto detectado: " .. obj.Name)
-                if espActive then
-                    task.wait(0.1)
-                    UpdateESP()
+                local name = obj.Name:lower()
+                if not name:find("npc") and not name:find("humano") then
+                    print("🔍 Novo objeto detectado: " .. obj.Name)
+                    if espActive then
+                        task.wait(0.1)
+                        UpdateESP()
+                    end
                 end
             end
         end
@@ -320,8 +362,8 @@ local function CreateMenu()
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 350, 0, 250)
-    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -125)
+    mainFrame.Size = UDim2.new(0, 350, 0, 280)
+    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -140)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
@@ -338,7 +380,7 @@ local function CreateMenu()
     title.Size = UDim2.new(1, 0, 0, 35)
     title.BackgroundColor3 = Color3.fromRGB(40, 30, 70)
     title.BackgroundTransparency = 0.3
-    title.Text = "✧ Six Seven"
+    title.Text = "✧ Six Seven - Pets"
     title.TextColor3 = Color3.fromRGB(190, 160, 255)
     title.TextSize = 18
     title.Font = Enum.Font.GothamBold
@@ -444,6 +486,44 @@ local function CreateMenu()
     statusLabel.TextSize = 13
     statusLabel.Font = Enum.Font.Gotham
 
+    -- Botão DEPURAR (para ver todos os modelos)
+    local debugBtn = Instance.new("TextButton")
+    debugBtn.Parent = content
+    debugBtn.Size = UDim2.new(1, 0, 0, 30)
+    debugBtn.Position = UDim2.new(0, 0, 0, 140)
+    debugBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    debugBtn.Text = "🔍 Ver todos os modelos"
+    debugBtn.TextColor3 = Color3.fromRGB(200, 200, 255)
+    debugBtn.TextSize = 13
+    debugBtn.Font = Enum.Font.GothamBold
+    debugBtn.BorderSizePixel = 0
+
+    local debugCorner = Instance.new("UICorner")
+    debugCorner.Parent = debugBtn
+    debugCorner.CornerRadius = UDim.new(0, 8)
+
+    debugBtn.MouseButton1Click:Connect(function()
+        print("========================================")
+        print("  🔍 LISTA DE MODELOS NO MAPA")
+        print("========================================")
+        local models = FindAllModels()
+        for i, model in pairs(models) do
+            local hasClick = false
+            local hasBillboard = false
+            for _, child in pairs(model:GetChildren()) do
+                if child:IsA("ClickDetector") then hasClick = true end
+                if child:IsA("BillboardGui") then hasBillboard = true end
+            end
+            print(i .. ". " .. model.Name)
+            print("   ClickDetector: " .. tostring(hasClick))
+            print("   BillboardGui: " .. tostring(hasBillboard))
+            print("   Humanoid: " .. tostring(model:FindFirstChild("Humanoid") ~= nil))
+            print("")
+        end
+        print("Total: " .. #models)
+        print("========================================")
+    end)
+
     -- Botão flutuante
     local floatBtn = Instance.new("TextButton")
     floatBtn.Parent = screenGui
@@ -479,7 +559,8 @@ local function CreateMenu()
         while true do
             task.wait(2)
             local count = #FindAllPets()
-            statusLabel.Text = "📊 Pets: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF")
+            local total = #FindAllModels()
+            statusLabel.Text = "📊 Pets: " .. count .. "/" .. total .. " | ESP: " .. (espActive and "ON" or "OFF")
         end
     end)
 
@@ -491,7 +572,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - ADAPTADO")
+print("  ✧ SIX SEVEN - VERSÃO PETS")
 print("========================================")
 
 -- Cria o menu
@@ -513,6 +594,6 @@ end)
 
 print("========================================")
 print("  ✅ SIX SEVEN PRONTO!")
-print("  📌 Clique em ESP para ligar")
-print("  📌 Clique em Auto para ligar")
+print("  📌 Clique em 'Ver todos os modelos'")
+print("  📌 Veja no console quais são os pets")
 print("========================================")
