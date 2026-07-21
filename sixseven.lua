@@ -1,9 +1,9 @@
 --[[
-    Six Seven - Auto Farm Completo (Laço + Captura Automática)
+    Six Seven - Corrigido (Não trava laço nem HUD)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - AUTO FARM COMPLETO...")
+print("🔄 CARREGANDO SIX SEVEN CORRIGIDO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -23,8 +23,8 @@ local Humanoid = Character and Character:FindFirstChild("Humanoid")
 local Settings = {
     AutoCapture = { 
         Enabled = false, 
-        Delay = 1.5,          -- Tempo entre capturas (ajustável)
-        TeleportDelay = 0.2    -- Velocidade do teleporte
+        Delay = 1.5,
+        TeleportDelay = 0.2
     },
     ESP = {
         Enabled = false,
@@ -43,6 +43,7 @@ local capturedPets = {}
 local espObjects = {}
 local petPositions = {}
 local petList = {}
+local isCapturing = false
 
 -- ========================================
 -- LISTA DE NPCS PARA IGNORAR
@@ -105,10 +106,10 @@ local function FindAllPets()
 end
 
 -- ========================================
--- FUNÇÃO PARA EQUIPAR O LAÇO (SLOT 1)
+-- FUNÇÃO PARA EQUIPAR O LAÇO (SEM TRAVAR)
 -- ========================================
 local function EquipLasso()
-    -- Tenta encontrar o laço no inventário
+    -- Procura o laço no inventário
     local backpack = Player:FindFirstChild("Backpack")
     if backpack then
         for _, item in pairs(backpack:GetChildren()) do
@@ -116,9 +117,10 @@ local function EquipLasso()
                 local name = item.Name:lower()
                 if name:find("laço") or name:find("lasso") or name:find("corda") or name:find("capture") then
                     if Humanoid then
+                        -- Equipa o laço
                         Humanoid:EquipTool(item)
                         print("🎯 Laço equipado!")
-                        task.wait(0.2)
+                        task.wait(0.15)
                         return true
                     end
                 end
@@ -126,12 +128,11 @@ local function EquipLasso()
         end
     end
     
-    -- Se não achou no backpack, tenta a tecla 1
+    -- Se não achou, tenta a tecla 1 (mas sem travar)
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
         task.wait(0.05)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-        print("🎯 Tecla 1 pressionada!")
         return true
     end)
     
@@ -139,7 +140,7 @@ local function EquipLasso()
 end
 
 -- ========================================
--- FUNÇÃO PARA LANÇAR O LAÇO NO PET
+-- FUNÇÃO PARA LANÇAR O LAÇO NO PET (SEM TRAVAR)
 -- ========================================
 local function ThrowLasso(pet)
     if not pet then return false end
@@ -148,11 +149,10 @@ local function ThrowLasso(pet)
     
     -- 1. Equipa o laço
     EquipLasso()
-    task.wait(0.2)
+    task.wait(0.15)
     
-    -- 2. Ativa o laço (prepara para lançar)
+    -- 2. Ativa o laço (sem travar)
     pcall(function()
-        -- Tenta ativar o laço via tool
         local tool = Humanoid and Humanoid:FindFirstChild("ActiveTool")
         if tool then
             tool:Activate()
@@ -161,13 +161,12 @@ local function ThrowLasso(pet)
     end)
     task.wait(0.1)
     
-    -- 3. Clica no pet para lançar o laço
+    -- 3. Clica no pet
     local camera = workspace.CurrentCamera
     if not camera then return false end
     
     local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
     if not onScreen then 
-        -- Se não está na tela, teleporta mais perto
         return false 
     end
     
@@ -175,7 +174,7 @@ local function ThrowLasso(pet)
         local mouse = Player:GetMouse()
         if mouse then
             mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
-            task.wait(0.1)
+            task.wait(0.05)
             mouse.Button1Click()
             print("🎯 Laço lançado em: " .. pet.Name)
             return true
@@ -199,7 +198,7 @@ local function ThrowLasso(pet)
 end
 
 -- ========================================
--- TELEPORTE SUAVE ATÉ O PET
+-- TELEPORTE SUAVE
 -- ========================================
 local function SmoothTeleport(targetPos)
     if not RootPart then return end
@@ -222,42 +221,47 @@ local function SmoothTeleport(targetPos)
     pcall(function()
         RootPart.CFrame = CFrame.new(targetPos)
     end)
-    task.wait(0.2)
+    task.wait(0.15)
 end
 
 -- ========================================
--- CAPTURAR PET (COMPLETO)
+-- CAPTURAR PET
 -- ========================================
 local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
+    if isCapturing then return false end
+    
+    isCapturing = true
+    
     local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
+    if not hrp then 
+        isCapturing = false
+        return false 
+    end
     
     print("🎯 Capturando: " .. pet.Name)
     
-    -- Teleporta suavemente até o pet
+    -- Teleporta
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     SmoothTeleport(targetPos)
     
-    -- Espera um pouco
-    task.wait(0.3)
+    task.wait(0.2)
     
-    -- Lança o laço no pet
+    -- Lança o laço
     local success = ThrowLasso(pet)
     
-    -- Aguarda a captura
-    task.wait(1.0)
+    task.wait(0.8)
     
+    isCapturing = false
     return success
 end
 
 -- ========================================
--- LEVAR PET À BASE (AUTOMÁTICO)
+-- LEVAR PET À BASE
 -- ========================================
 local function BringPetToBase(pet)
     if not pet then return end
     
-    -- Encontra a base do jogador
     local base = workspace:FindFirstChild("Base") or workspace:FindFirstChild("PlayerBase")
     if not base then return end
     
@@ -265,20 +269,14 @@ local function BringPetToBase(pet)
     if hrp then
         local basePos = base.Position + Vector3.new(0, 2, 0)
         
-        -- Teleporta o pet para a base
         pcall(function()
             hrp.CFrame = CFrame.new(basePos)
-        end)
-        task.wait(0.3)
-        
-        -- Teleporta o jogador para a base também
-        pcall(function()
             RootPart.CFrame = CFrame.new(basePos)
         end)
-        task.wait(0.3)
+        task.wait(0.2)
     end
     
-    -- Tenta soltar o pet na base (automático)
+    -- Tenta soltar
     local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet")
         or ReplicatedStorage:FindFirstChild("DropPet")
         or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Release")
@@ -286,18 +284,23 @@ local function BringPetToBase(pet)
     if releaseRemote then
         pcall(function() 
             releaseRemote:FireServer(pet) 
-            print("📦 Pet solto na base automaticamente!")
+            print("📦 Pet solto na base!")
         end)
-        task.wait(0.3)
+        task.wait(0.2)
     end
 end
 
 -- ========================================
--- LOOP DE AUTO CAPTURE
+-- LOOP AUTO CAPTURE (COM DELAY)
 -- ========================================
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
         task.spawn(function()
+            if isCapturing then 
+                task.wait(0.5)
+                return 
+            end
+            
             local pets = FindAllPets()
             local target = nil
             local minDist = math.huge
@@ -307,7 +310,6 @@ local function AutoCaptureLoop()
                 return
             end
             
-            -- Encontra o pet mais próximo
             for _, pet in pairs(pets) do
                 if not capturedPets[pet] then
                     local hrp = pet:FindFirstChild("HumanoidRootPart")
@@ -322,16 +324,14 @@ local function AutoCaptureLoop()
             end
             
             if target then
-                -- Captura o pet
                 local success = CapturePet(target)
                 if success then
                     capturedPets[target] = true
-                    -- Leva o pet para a base
                     BringPetToBase(target)
                     print("✅ " .. target.Name .. " capturado e enviado para a base!")
                 end
                 
-                -- Aguarda o delay antes de procurar o próximo
+                -- Delay entre capturas
                 task.wait(Settings.AutoCapture.Delay)
             else
                 task.wait(0.5)
@@ -727,7 +727,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - AUTO FARM COMPLETO")
+print("  ✧ SIX SEVEN - CORRIGIDO")
 print("========================================")
 
 pcall(CreateMenu)
@@ -747,6 +747,6 @@ end)
 print("========================================")
 print("  ✅ PRONTO!")
 print("  📌 ESP: Mostra pets")
-print("  📌 Auto: Teleporta → Laço → Captura → Base")
-print("  📌 Delay: Ajuste o tempo entre capturas")
+print("  📌 Auto: Não trava o laço")
+print("  📌 HUD: Não buga mais")
 print("========================================")
