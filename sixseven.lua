@@ -1,45 +1,100 @@
 --[[
-    Six Seven - DETECÇÃO UNIVERSAL
+    Six Seven - Auto Farm & ESP (VERSÃO CORRIGIDA)
+    Game: [🍎] Capture e Domestique!
 ]]
 
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
 
 -- ========================================
--- FUNÇÃO QUE DETECTA QUALQUER MODELO COM HUMANOID
+-- CONFIGURAÇÕES
 -- ========================================
-local function FindAllCreatures()
-    local creatures = {}
+local Settings = {
+    AutoCapture = { Enabled = false, Delay = 1.5 },
+    ESP = {
+        Enabled = false,
+        Color = Color3.fromRGB(0, 255, 0),
+        MaxDistance = 200
+    }
+}
+
+-- ========================================
+-- VARIÁVEIS
+-- ========================================
+local espActive = false
+local autoCapture = false
+local autoCaptureRunning = false
+local capturedPets = {}
+local espObjects = {}
+local petList = {}
+
+-- ========================================
+-- FUNÇÃO PARA IDENTIFICAR PETS
+-- ========================================
+local function IsPet(obj)
+    if not obj or not obj:IsA("Model") then return false end
+    if not obj:FindFirstChild("HumanoidRootPart") then return false end
+    if not obj:FindFirstChild("Humanoid") then return false end
     
-    -- Procura por TODOS os modelos com HumanoidRootPart e Humanoid
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj:FindFirstChild("Humanoid") then
-            -- Ignora o próprio jogador
-            if obj ~= Character and obj.Parent ~= Player and obj.Name ~= Player.Name then
-                -- Ignora objetos comuns (como NPCs se tiver)
-                local name = obj.Name:lower()
-                if not name:find("npc") and not name:find("player") and not name:find("base") then
-                    table.insert(creatures, obj)
-                    print("🐾 Encontrado:", obj.Name)
-                end
-            end
+    -- IGNORA O PRÓPRIO JOGADOR
+    if obj == Character then return false end
+    if obj == Player.Character then return false end
+    
+    -- IGNORA OUTROS JOGADORES
+    if Players:GetPlayerFromCharacter(obj) then return false end
+    
+    -- IGNORA OBJETOS COM NOMES DE PLAYER
+    local name = obj.Name:lower()
+    if name:find("player") or name:find("humanoid") then return false end
+    
+    -- VERIFICA SE É PET POR NOME
+    local petKeywords = {"pet", "creature", "monster", "boss", "divino", "mistico", "chefe", "animal", "wild", "capture", "domestique"}
+    for _, keyword in pairs(petKeywords) do
+        if name:find(keyword) then
+            return true
         end
     end
     
-    return creatures
+    -- VERIFICA SE TEM TAG DE PET
+    if obj:FindFirstChild("IsPet") or obj:FindFirstChild("PetTag") or obj:FindFirstChild("CreatureTag") then
+        return true
+    end
+    
+    -- VERIFICA SE TEM BARRA DE VIDA (pets geralmente têm)
+    if obj:FindFirstChild("HealthBar") or obj:FindFirstChild("BillboardGui") then
+        -- Se tem nome que não parece de player
+        if not name:find("player") and not name:find("humanoid") then
+            return true
+        end
+    end
+    
+    return false
 end
 
 -- ========================================
--- ESP SIMPLES
+-- FUNÇÃO PARA ENCONTRAR TODOS OS PETS
 -- ========================================
-local espObjects = {}
-local espActive = false
+local function FindAllPets()
+    local pets = {}
+    
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if IsPet(obj) then
+            table.insert(pets, obj)
+        end
+    end
+    
+    return pets
+end
 
+-- ========================================
+-- SISTEMA ESP
+-- ========================================
 local function CreateESP(pet)
     if not pet or not pet:IsA("Model") then return end
     if espObjects[pet] then return end
@@ -47,22 +102,60 @@ local function CreateESP(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
+    -- Highlight principal
     local highlight = Instance.new("Highlight")
     highlight.Parent = pet
-    highlight.FillColor = Color3.fromRGB(0, 255, 0)
+    highlight.FillColor = Settings.ESP.Color
     highlight.FillTransparency = 0.3
     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
     highlight.OutlineTransparency = 0.1
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Enabled = true
     
-    espObjects[pet] = highlight
+    -- Nome flutuante
+    local billboard = Instance.new("BillboardGui")
+    billboard.Parent = hrp
+    billboard.Size = UDim2.new(0, 150, 0, 30)
+    billboard.Adornee = hrp
+    billboard.AlwaysOnTop = true
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = billboard
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    label.BackgroundTransparency = 0.5
+    label.Text = "🐾 " .. pet.Name
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = 14
+    label.Font = Enum.Font.GothamBold
+    label.TextScaled = true
+    
+    -- Distância
+    local distLabel = Instance.new("TextLabel")
+    distLabel.Parent = billboard
+    distLabel.Size = UDim2.new(1, 0, 0, 20)
+    distLabel.Position = UDim2.new(0, 0, 1, 0)
+    distLabel.BackgroundTransparency = 1
+    distLabel.Text = "0m"
+    distLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    distLabel.TextSize = 12
+    distLabel.Font = Enum.Font.Gotham
+    
+    espObjects[pet] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        Label = label,
+        DistLabel = distLabel
+    }
+    
     print("✅ ESP criado para:", pet.Name)
+    return true
 end
 
 local function RemoveESP(pet)
     if espObjects[pet] then
-        espObjects[pet]:Destroy()
+        if espObjects[pet].Highlight then espObjects[pet].Highlight:Destroy() end
+        if espObjects[pet].Billboard then espObjects[pet].Billboard:Destroy() end
         espObjects[pet] = nil
     end
 end
@@ -76,33 +169,44 @@ local function UpdateESP()
         return
     end
     
-    local creatures = FindAllCreatures()
+    local pets = FindAllPets()
     
-    for _, creature in pairs(creatures) do
-        if creature and creature:IsA("Model") and creature:FindFirstChild("HumanoidRootPart") then
-            CreateESP(creature)
+    -- Atualiza lista de pets
+    petList = pets
+    
+    -- Cria/Atualiza ESP para cada pet
+    for _, pet in pairs(pets) do
+        if pet and pet:IsA("Model") and pet:FindFirstChild("HumanoidRootPart") then
+            local hrp = pet.HumanoidRootPart
+            if RootPart then
+                local dist = (RootPart.Position - hrp.Position).Magnitude
+                if dist <= Settings.ESP.MaxDistance then
+                    local created = CreateESP(pet)
+                    if created and espObjects[pet] and espObjects[pet].DistLabel then
+                        espObjects[pet].DistLabel.Text = math.floor(dist) .. "m"
+                    end
+                else
+                    RemoveESP(pet)
+                end
+            end
         end
     end
     
-    -- Remove ESP de criaturas que não existem mais
-    local currentCreatures = {}
-    for _, c in pairs(creatures) do
-        currentCreatures[c] = true
+    -- Remove ESP de pets que não existem mais
+    local currentPets = {}
+    for _, pet in pairs(pets) do
+        currentPets[pet] = true
     end
     for pet, _ in pairs(espObjects) do
-        if not currentCreatures[pet] or not pet:IsA("Model") then
+        if not currentPets[pet] or not pet:IsA("Model") then
             RemoveESP(pet)
         end
     end
 end
 
 -- ========================================
--- AUTO CAPTURE SIMPLES
+-- AUTO CAPTURE
 -- ========================================
-local autoCapture = false
-local autoCaptureRunning = false
-local capturedPets = {}
-
 local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
     local hrp = pet:FindFirstChild("HumanoidRootPart")
@@ -114,7 +218,7 @@ local function CapturePet(pet)
         task.wait(0.1)
     end
     
-    -- Tenta diferentes formas de capturar
+    -- Tenta capturar via Remote
     local remote = game:GetService("ReplicatedStorage"):FindFirstChild("CapturePet")
     if remote then
         pcall(function() remote:FireServer(pet) end)
@@ -122,24 +226,36 @@ local function CapturePet(pet)
         return true
     end
     
+    -- Tenta capturar via Click
+    pcall(function()
+        local mouse = Player:GetMouse()
+        if mouse then
+            local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+            if onScreen then
+                mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
+                mouse.Button1Click()
+            end
+        end
+    end)
+    
     return true
 end
 
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
         task.spawn(function()
-            local creatures = FindAllCreatures()
+            local pets = FindAllPets()
             local target = nil
             local minDist = math.huge
             
-            for _, creature in pairs(creatures) do
-                if not capturedPets[creature] then
-                    local hrp = creature:FindFirstChild("HumanoidRootPart")
+            for _, pet in pairs(pets) do
+                if not capturedPets[pet] then
+                    local hrp = pet:FindFirstChild("HumanoidRootPart")
                     if hrp and RootPart then
                         local dist = (RootPart.Position - hrp.Position).Magnitude
                         if dist < minDist then
                             minDist = dist
-                            target = creature
+                            target = pet
                         end
                     end
                 end
@@ -150,9 +266,9 @@ local function AutoCaptureLoop()
                 local success = CapturePet(target)
                 if success then
                     capturedPets[target] = true
-                    print("✅ Capturado!")
+                    print("✅ Capturado com sucesso!")
                 end
-                task.wait(1.5)
+                task.wait(Settings.AutoCapture.Delay)
             else
                 task.wait(0.5)
             end
@@ -162,7 +278,21 @@ local function AutoCaptureLoop()
 end
 
 -- ========================================
--- GUI
+-- MONITORAMENTO CONTÍNUO
+-- ========================================
+local function StartMonitoring()
+    task.spawn(function()
+        while true do
+            task.wait(0.5)
+            if espActive then
+                UpdateESP()
+            end
+        end
+    end)
+end
+
+-- ========================================
+-- CRIAÇÃO DA GUI
 -- ========================================
 local function CreateGUI()
     local screenGui = Instance.new("ScreenGui")
@@ -172,8 +302,8 @@ local function CreateGUI()
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 350, 0, 300)
-    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
+    mainFrame.Size = UDim2.new(0, 350, 0, 320)
+    mainFrame.Position = UDim2.new(0.5, -175, 0.5, -160)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
@@ -291,10 +421,21 @@ local function CreateGUI()
     statusLabel.Size = UDim2.new(1, 0, 0, 30)
     statusLabel.Position = UDim2.new(0, 0, 0, 110)
     statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "📊 Status: Procurando..."
+    statusLabel.Text = "📊 Status: Procurando pets..."
     statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
     statusLabel.TextSize = 14
     statusLabel.Font = Enum.Font.Gotham
+
+    -- Delay slider
+    local delayLabel = Instance.new("TextLabel")
+    delayLabel.Parent = content
+    delayLabel.Size = UDim2.new(1, 0, 0, 20)
+    delayLabel.Position = UDim2.new(0, 0, 0, 145)
+    delayLabel.BackgroundTransparency = 1
+    delayLabel.Text = "Delay: 1.5s"
+    delayLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
+    delayLabel.TextSize = 13
+    delayLabel.Font = Enum.Font.Gotham
 
     -- Botão flutuante
     local floatBtn = Instance.new("TextButton")
@@ -330,18 +471,8 @@ local function CreateGUI()
     task.spawn(function()
         while true do
             task.wait(1)
-            local count = #FindAllCreatures()
-            statusLabel.Text = "📊 Criaturas encontradas: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF")
-        end
-    end)
-
-    -- Atualiza ESP automaticamente
-    task.spawn(function()
-        while true do
-            task.wait(0.5)
-            if espActive then
-                UpdateESP()
-            end
+            local count = #FindAllPets()
+            statusLabel.Text = "📊 Pets encontrados: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF")
         end
     end)
 
@@ -353,36 +484,23 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - DETECÇÃO UNIVERSAL")
+print("  ✧ SIX SEVEN - CORRIGIDO")
 print("========================================")
-
--- Executa diagnóstico primeiro
-local creatures = FindAllCreatures()
-print("🔍 Encontrados " .. #creatures .. " modelos com Humanoid no mapa!")
-
-if #creatures == 0 then
-    print("⚠️ Nenhum pet encontrado! Verifique:")
-    print("   1 - Você está perto de algum pet?")
-    print("   2 - Os pets têm 'Humanoid' e 'HumanoidRootPart'?")
-    print("   3 - Execute o script de diagnóstico para ver os nomes")
-end
-
-for _, c in pairs(creatures) do
-    print("   - " .. c.Name)
-end
 
 -- Cria GUI
 pcall(CreateGUI)
 
--- Atualiza personagem
+-- Inicia monitoramento
+StartMonitoring()
+
+-- Atualiza quando personagem respawna
 Player.CharacterAdded:Connect(function(newChar)
     Character = newChar
     RootPart = newChar:FindFirstChild("HumanoidRootPart")
     print("🔄 Respawnou!")
 end)
 
-print("========================================")
-print("✅ PRONTO!")
+print("✅ Script carregado!")
+print("📌 Os pets serão destacados em VERDE")
 print("📌 Clique em 'ESP' para ligar")
-print("📌 Clique em 'Auto Capture' para ligar")
 print("========================================")
