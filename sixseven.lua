@@ -1,29 +1,54 @@
 --[[
-    Six Seven - Versão Mobile
+    Six Seven - Modo Caça
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🚀 CARREGANDO SIX SEVEN MOBILE...")
+print("🚀 CARREGANDO MODO CAÇA...")
+
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 
 -- ========================================
--- PROCURA TUDO QUE É CLICÁVEL
+-- VARIÁVEIS
 -- ========================================
-local function FindClickableObjects()
+local espActive = false
+local espObjects = {}
+local petPositions = {}
+
+-- ========================================
+-- FUNÇÃO PARA ENCONTRAR TUDO QUE NÃO É ESTÁTICO
+-- ========================================
+local function FindDynamicObjects()
     local objects = {}
     
-    -- Procura por qualquer coisa com ClickDetector
     for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("ClickDetector") and obj.Parent then
-            table.insert(objects, obj.Parent)
-            print("🔍 ClickDetector encontrado em: " .. obj.Parent.Name)
-        end
-    end
-    
-    -- Procura por qualquer coisa com BillboardGui
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("BillboardGui") and obj.Parent then
-            table.insert(objects, obj.Parent)
-            print("🔍 BillboardGui encontrado em: " .. obj.Parent.Name)
+        -- Verifica se é um modelo
+        if obj:IsA("Model") then
+            -- Ignora o próprio jogador
+            if obj == Player.Character then
+                continue
+            end
+            
+            -- Ignora objetos com nomes de placa ou fixos
+            local name = obj.Name:lower()
+            if name:find("placa") or name:find("sign") or name:find("wall") or name:find("floor") or name:find("ground") or name:find("base") then
+                continue
+            end
+            
+            -- Verifica se tem partes (quase todo modelo tem)
+            local hasParts = false
+            for _, child in pairs(obj:GetChildren()) do
+                if child:IsA("BasePart") then
+                    hasParts = true
+                    break
+                end
+            end
+            
+            if hasParts then
+                table.insert(objects, obj)
+            end
         end
     end
     
@@ -31,25 +56,47 @@ local function FindClickableObjects()
 end
 
 -- ========================================
+-- FUNÇÃO PARA VERIFICAR SE ESTÁ SE MOVENDO
+-- ========================================
+local function IsMoving(obj)
+    if not obj then return false end
+    local hrp = obj:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    -- Guarda posição anterior
+    if not petPositions[obj] then
+        petPositions[obj] = hrp.Position
+        return false
+    end
+    
+    local oldPos = petPositions[obj]
+    local newPos = hrp.Position
+    local distance = (oldPos - newPos).Magnitude
+    
+    -- Atualiza posição
+    petPositions[obj] = newPos
+    
+    -- Se moveu mais de 0.5 unidades, está se movendo
+    return distance > 0.5
+end
+
+-- ========================================
 -- ESP
 -- ========================================
-local espObjects = {}
-local espActive = false
-
-local function CreateESP(obj)
+local function CreateESP(obj, color)
     if not obj or espObjects[obj] then return end
     
     pcall(function()
         local h = Instance.new("Highlight")
         h.Parent = obj
-        h.FillColor = Color3.fromRGB(0, 255, 0)
+        h.FillColor = color or Color3.fromRGB(0, 255, 0)
         h.FillTransparency = 0.2
-        h.OutlineColor = Color3.fromRGB(255, 255, 0)
+        h.OutlineColor = Color3.fromRGB(255, 255, 255)
         h.OutlineTransparency = 0.1
         h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         h.Enabled = true
         espObjects[obj] = h
-        print("✅ ESP criado para: " .. obj.Name)
+        print("✅ Destacado: " .. obj.Name)
     end)
 end
 
@@ -60,41 +107,116 @@ local function RemoveESP(obj)
     end
 end
 
+local function UpdateESP()
+    if not espActive then
+        for obj, _ in pairs(espObjects) do
+            RemoveESP(obj)
+        end
+        espObjects = {}
+        return
+    end
+    
+    -- Encontra todos os objetos
+    local objects = FindDynamicObjects()
+    
+    -- Para cada objeto, verifica se está se movendo
+    for _, obj in pairs(objects) do
+        if obj and obj:IsA("Model") then
+            -- Se está se movendo, destaca em VERMELHO
+            if IsMoving(obj) then
+                CreateESP(obj, Color3.fromRGB(255, 0, 0))
+            else
+                -- Se não está se movendo, destaca em VERDE (possível pet parado)
+                CreateESP(obj, Color3.fromRGB(0, 255, 0))
+            end
+        end
+    end
+    
+    -- Remove ESP de objetos que não existem mais
+    local currentObjects = {}
+    for _, obj in pairs(objects) do
+        currentObjects[obj] = true
+    end
+    for obj, _ in pairs(espObjects) do
+        if not currentObjects[obj] or not obj:IsA("Model") then
+            RemoveESP(obj)
+        end
+    end
+end
+
 -- ========================================
--- AUTO CAPTURE
+-- AUTO CAPTURE (MODO CLICK)
 -- ========================================
 local autoCapture = false
 local autoRunning = false
 
-local function ClickOnObject(obj)
+local function TryCapture(obj)
+    if not obj then return false end
+    
     pcall(function()
-        -- Tenta clicar via mouse
-        local mouse = game:GetService("Players").LocalPlayer:GetMouse()
-        if mouse and obj:FindFirstChild("HumanoidRootPart") then
-            local hrp = obj.HumanoidRootPart
-            local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
-            if onScreen then
-                mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
-                mouse.Button1Click()
-                print("🖱️ Clique executado em: " .. obj.Name)
+        -- Tenta encontrar o ponto de clique
+        local hrp = obj:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local mouse = Player:GetMouse()
+            if mouse then
+                local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+                if onScreen then
+                    mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
+                    task.wait(0.1)
+                    mouse.Button1Click()
+                    print("🖱️ Clique em: " .. obj.Name)
+                    return true
+                end
             end
         end
     end)
+    return false
+end
+
+local function AutoCaptureLoop()
+    while autoCapture and autoRunning do
+        task.spawn(function()
+            local objects = FindDynamicObjects()
+            local target = nil
+            local minDist = math.huge
+            
+            -- Pega o objeto mais próximo
+            for _, obj in pairs(objects) do
+                local hrp = obj:FindFirstChild("HumanoidRootPart")
+                if hrp and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (Player.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                    if dist < minDist then
+                        minDist = dist
+                        target = obj
+                    end
+                end
+            end
+            
+            if target then
+                print("🎯 Tentando capturar: " .. target.Name)
+                TryCapture(target)
+                task.wait(2)
+            else
+                task.wait(1)
+            end
+        end)
+        task.wait(0.1)
+    end
 end
 
 -- ========================================
--- CRIAR MENU SIMPLES
+-- CRIAR MENU
 -- ========================================
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SixSevenMobile"
-    screenGui.Parent = game:GetService("CoreGui")
+    screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 300, 0, 200)
-    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+    mainFrame.Size = UDim2.new(0, 300, 0, 220)
+    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -110)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -111,9 +233,9 @@ local function CreateMenu()
     title.Size = UDim2.new(1, 0, 0, 35)
     title.BackgroundColor3 = Color3.fromRGB(40, 30, 70)
     title.BackgroundTransparency = 0.3
-    title.Text = "✧ Six Seven"
+    title.Text = "✧ Six Seven - Caça"
     title.TextColor3 = Color3.fromRGB(190, 160, 255)
-    title.TextSize = 18
+    title.TextSize = 16
     title.Font = Enum.Font.GothamBold
 
     local titleCorner = Instance.new("UICorner")
@@ -164,15 +286,10 @@ local function CreateMenu()
         espActive = not espActive
         espBtn.Text = espActive and "🟢 ESP: ON" or "🔴 ESP: OFF"
         espBtn.BackgroundColor3 = espActive and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
-        
+        print("ESP:", espActive and "ON" or "OFF")
         if espActive then
-            print("✅ ESP ATIVADO!")
-            local objects = FindClickableObjects()
-            for _, obj in pairs(objects) do
-                CreateESP(obj)
-            end
+            UpdateESP()
         else
-            print("⏹️ ESP DESATIVADO!")
             for obj, _ in pairs(espObjects) do
                 RemoveESP(obj)
             end
@@ -200,27 +317,13 @@ local function CreateMenu()
         autoCapture = not autoCapture
         autoBtn.Text = autoCapture and "🟢 Auto: ON" or "🔴 Auto: OFF"
         autoBtn.BackgroundColor3 = autoCapture and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
-        
+        print("Auto Capture:", autoCapture and "ON" or "OFF")
         if autoCapture then
-            print("✅ AUTO CAPTURE ATIVADO!")
             if not autoRunning then
                 autoRunning = true
-                task.spawn(function()
-                    while autoCapture and autoRunning do
-                        local objects = FindClickableObjects()
-                        if #objects > 0 then
-                            print("🎯 Tentando capturar: " .. objects[1].Name)
-                            ClickOnObject(objects[1])
-                            task.wait(2)
-                        else
-                            print("⏳ Nenhum objeto encontrado...")
-                            task.wait(1)
-                        end
-                    end
-                end)
+                task.spawn(AutoCaptureLoop)
             end
         else
-            print("⏹️ AUTO CAPTURE DESATIVADO!")
             autoRunning = false
         end
     end)
@@ -270,7 +373,7 @@ local function CreateMenu()
     task.spawn(function()
         while true do
             task.wait(2)
-            local count = #FindClickableObjects()
+            local count = #FindDynamicObjects()
             statusLabel.Text = "📊 Objetos: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF")
         end
     end)
@@ -280,26 +383,35 @@ local function CreateMenu()
 end
 
 -- ========================================
+-- LOOP DE ATUALIZAÇÃO
+-- ========================================
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if espActive then
+            UpdateESP()
+        end
+    end
+end)
+
+-- ========================================
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN MOBILE")
+print("  ✧ SIX SEVEN - MODO CAÇA")
 print("========================================")
 
 -- Cria o menu
-local success, err = pcall(CreateMenu)
-if success then
-    print("✅ Menu criado com sucesso!")
-else
-    print("❌ Erro ao criar menu: " .. tostring(err))
-end
+pcall(CreateMenu)
 
--- Procura objetos iniciais
-local initialObjects = FindClickableObjects()
-print("🔍 Encontrados " .. #initialObjects .. " objetos interativos")
+-- Conta objetos iniciais
+local objects = FindDynamicObjects()
+print("🔍 Encontrados " .. #objects .. " objetos no mapa")
+print("   🔴 Vermelho = se movendo")
+print("   🟢 Verde = parado")
 
 print("========================================")
-print("  ✅ PRONTO PARA USAR!")
-print("  📌 Clique em ESP para ligar")
-print("  📌 Clique em Auto para ligar")
+print("  ✅ PRONTO!")
+print("  📌 Ligue o ESP para ver os objetos")
+print("  📌 Objetos em movimento ficam VERMELHOS")
 print("========================================")
