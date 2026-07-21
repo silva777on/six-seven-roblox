@@ -1,19 +1,21 @@
 --[[
-    Six Seven - Auto Farm & ESP (Laço + Clique)
+    Six Seven - Auto Farm & ESP (Laço Slot 1)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - LAÇO + CLIQUE...")
+print("🔄 CARREGANDO SIX SEVEN - LAÇO SLOT 1...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+local Humanoid = Character and Character:FindFirstChild("Humanoid")
 
 -- ========================================
 -- CONFIGURAÇÕES
@@ -22,8 +24,7 @@ local Settings = {
     AutoCapture = { 
         Enabled = false, 
         Delay = 2.0,
-        TeleportDelay = 0.3,
-        ClickDelay = 0.5
+        TeleportDelay = 0.3
     },
     ESP = {
         Enabled = false,
@@ -44,7 +45,7 @@ local petPositions = {}
 local petList = {}
 
 -- ========================================
--- LISTA DE NOMES DE NPCS PARA IGNORAR
+-- LISTA DE NPCS PARA IGNORAR
 -- ========================================
 local npcNames = {
     "npc", "humano", "personagem", "vendedor", "lojista", 
@@ -64,40 +65,23 @@ local function IsNPC(obj)
 end
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR SÓ PETS
+-- FUNÇÃO PARA ENCONTRAR PETS
 -- ========================================
 local function FindAllPets()
     local pets = {}
     
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
-            -- Ignora o jogador
             if obj == Character then continue end
             if obj == Player.Character then continue end
             if Players:GetPlayerFromCharacter(obj) then continue end
-            
-            -- Ignora NPCs
             if IsNPC(obj) then continue end
             
             local name = obj.Name:lower()
-            
-            -- Ignora objetos comuns
             if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
                 continue
             end
             
-            -- Verifica se tem partes (quase todo pet tem)
-            local hasParts = false
-            for _, child in pairs(obj:GetChildren()) do
-                if child:IsA("BasePart") then
-                    hasParts = true
-                    break
-                end
-            end
-            
-            if not hasParts then continue end
-            
-            -- Verifica se está se movendo
             local hrp = obj:FindFirstChild("HumanoidRootPart")
             if hrp then
                 local currentPos = hrp.Position
@@ -105,9 +89,7 @@ local function FindAllPets()
                 if petPositions[obj] then
                     local oldPos = petPositions[obj]
                     local dist = (currentPos - oldPos).Magnitude
-                    
-                    -- Só adiciona se estiver se movendo OU for a primeira vez
-                    if dist > 0.1 or not petPositions[obj] then
+                    if dist > 0.1 then
                         table.insert(pets, obj)
                     end
                 else
@@ -123,47 +105,75 @@ local function FindAllPets()
 end
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR O LAÇO
+-- FUNÇÃO PARA USAR O LAÇO (SLOT 1)
 -- ========================================
-local function FindLasso()
-    -- Procura no Backpack
+local function UseLasso()
+    if not Humanoid then return false end
+    
+    -- Tenta encontrar o laço no inventário
+    local lasso = nil
     local backpack = Player:FindFirstChild("Backpack")
+    
     if backpack then
         for _, item in pairs(backpack:GetChildren()) do
             local name = item.Name:lower()
             if name:find("laço") or name:find("lasso") or name:find("corda") or name:find("capture") then
-                return item
+                lasso = item
+                break
             end
         end
     end
     
-    -- Procura no PlayerGui
-    local playerGui = Player:FindFirstChild("PlayerGui")
-    if playerGui then
-        for _, item in pairs(playerGui:GetDescendants()) do
-            if item:IsA("TextButton") or item:IsA("ImageButton") then
+    -- Se não achou no Backpack, procura no Character
+    if not lasso and Character then
+        for _, item in pairs(Character:GetChildren()) do
+            if item:IsA("Tool") then
                 local name = item.Name:lower()
                 if name:find("laço") or name:find("lasso") or name:find("corda") or name:find("capture") then
-                    return item
+                    lasso = item
+                    break
                 end
             end
         end
     end
     
-    -- Procura no StarterGui
-    local starterGui = game:GetService("StarterGui")
-    if starterGui then
-        for _, item in pairs(starterGui:GetDescendants()) do
-            if item:IsA("TextButton") or item:IsA("ImageButton") then
-                local name = item.Name:lower()
-                if name:find("laço") or name:find("lasso") or name:find("corda") or name:find("capture") then
-                    return item
-                end
-            end
-        end
+    -- Se encontrou o laço, equipa e usa
+    if lasso and Humanoid then
+        pcall(function()
+            -- Equipa o laço
+            Humanoid:EquipTool(lasso)
+            print("🎯 Laço equipado!")
+            task.wait(0.2)
+            
+            -- Ativa o laço (slot 1)
+            lasso:Activate()
+            print("🎯 Laço ativado!")
+            task.wait(0.3)
+            return true
+        end)
+        return true
     end
     
-    return nil
+    -- Se não encontrou o laço, tenta usar a tecla 1
+    pcall(function()
+        -- Simula pressionar a tecla 1
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+        task.wait(0.1)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+        print("🎯 Tecla 1 pressionada!")
+        task.wait(0.2)
+        
+        -- Tenta ativar com clique
+        local mouse = Player:GetMouse()
+        if mouse then
+            mouse.Button1Click()
+            print("🖱️ Clique para ativar laço!")
+            task.wait(0.3)
+        end
+        return true
+    end)
+    
+    return false
 end
 
 -- ========================================
@@ -174,84 +184,21 @@ local function ClickOnPet(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
-    -- Pega a posição do pet na tela
     local camera = workspace.CurrentCamera
     if not camera then return false end
     
     local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
     if not onScreen then 
-        -- Se não está na tela, teleporta mais perto
         return false 
     end
     
-    -- Tenta clicar
     pcall(function()
         local mouse = Player:GetMouse()
         if mouse then
-            -- Move o mouse até o pet
             mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
             task.wait(0.1)
-            -- Clica
             mouse.Button1Click()
-            print("🖱️ Clique em: " .. pet.Name)
-            return true
-        end
-    end)
-    
-    -- Tenta via Remote também
-    pcall(function()
-        local remote = ReplicatedStorage:FindFirstChild("ClickPet")
-            or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Click")
-            or ReplicatedStorage:FindFirstChild("Events"):FindFirstChild("Click")
-        
-        if remote then
-            remote:FireServer(pet)
-            print("📡 Click via Remote: " .. pet.Name)
-            return true
-        end
-    end)
-    
-    return false
-end
-
--- ========================================
--- FUNÇÃO PARA USAR O LAÇO
--- ========================================
-local function UseLasso(pet)
-    if not pet then return false end
-    
-    -- Encontra o laço
-    local lasso = FindLasso()
-    if not lasso then
-        print("❌ Laço não encontrado!")
-        return false
-    end
-    
-    -- Tenta usar o laço
-    pcall(function()
-        -- Se for um botão, clica nele
-        if lasso:IsA("TextButton") or lasso:IsA("ImageButton") then
-            lasso:Fire()
-            print("🎯 Laço ativado!")
-            task.wait(0.3)
-            
-            -- Depois de ativar o laço, clica no pet
-            ClickOnPet(pet)
-            return true
-        end
-        
-        -- Se for um tool, equipa e usa
-        if lasso:IsA("Tool") then
-            -- Equipa o laço
-            Player.Character:FindFirstChild("Humanoid"):EquipTool(lasso)
-            task.wait(0.3)
-            
-            -- Usa o laço
-            lasso:Activate()
-            task.wait(0.3)
-            
-            -- Depois de ativar, clica no pet
-            ClickOnPet(pet)
+            print("🖱️ Clique no pet: " .. pet.Name)
             return true
         end
     end)
@@ -273,7 +220,6 @@ local function CapturePet(pet)
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     
     if RootPart then
-        -- Teleporte suave
         local currentPos = RootPart.Position
         local dist = (currentPos - targetPos).Magnitude
         
@@ -289,33 +235,49 @@ local function CapturePet(pet)
             end
         end
         
-        -- Teleporte final
         pcall(function()
             RootPart.CFrame = CFrame.new(targetPos)
         end)
         task.wait(0.2)
     end
     
-    -- Tenta usar o laço
-    local lassoSuccess = UseLasso(pet)
+    -- PASSO 1: Usa o laço (slot 1)
+    print("🔧 Ativando laço...")
+    local lassoSuccess = UseLasso()
     
-    if lassoSuccess then
-        print("✅ Laço usado em: " .. pet.Name)
-        task.wait(Settings.AutoCapture.ClickDelay)
-        return true
+    if not lassoSuccess then
+        print("⚠️ Laço não encontrado, tentando tecla 1...")
+        -- Tenta a tecla 1 diretamente
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+            task.wait(0.1)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+        end)
+        task.wait(0.3)
     end
     
-    -- Se o laço falhou, tenta só clicar
-    print("🔄 Tentando clicar diretamente...")
+    -- PASSO 2: Clica no pet (com o laço ativado)
+    print("🖱️ Clicando no pet...")
     local clickSuccess = ClickOnPet(pet)
     
     if clickSuccess then
-        print("✅ Clique em: " .. pet.Name)
-        task.wait(Settings.AutoCapture.ClickDelay)
+        print("✅ Clique realizado em: " .. pet.Name)
+        task.wait(1.0) -- Espera a animação do laço
+        return true
+    else
+        -- Tenta de novo com delay
+        print("🔄 Tentando novamente...")
+        task.wait(0.5)
+        
+        -- Usa laço de novo
+        UseLasso()
+        task.wait(0.3)
+        
+        -- Tenta clicar de novo
+        ClickOnPet(pet)
+        task.wait(1.0)
         return true
     end
-    
-    return false
 end
 
 -- ========================================
@@ -331,7 +293,6 @@ local function BringPetToBase(pet)
     if hrp then
         local basePos = base.Position + Vector3.new(0, 2, 0)
         
-        -- Teleporta suavemente
         if RootPart then
             local currentPos = RootPart.Position
             local dist = (currentPos - basePos).Magnitude
@@ -535,7 +496,7 @@ local function StartMonitoring()
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
                 if not IsNPC(obj) then
-                    print("🔍 Novo pet detectado: " .. obj.Name)
+                    print("🔍 Novo pet: " .. obj.Name)
                     if espActive then
                         task.wait(0.1)
                         UpdateESP()
@@ -800,7 +761,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - LAÇO + CLIQUE")
+print("  ✧ SIX SEVEN - LAÇO SLOT 1")
 print("========================================")
 
 -- Cria o menu
@@ -813,6 +774,7 @@ StartMonitoring()
 Player.CharacterAdded:Connect(function(newChar)
     Character = newChar
     RootPart = newChar:FindFirstChild("HumanoidRootPart")
+    Humanoid = newChar:FindFirstChild("Humanoid")
     print("🔄 Personagem respawnou!")
     task.wait(1)
     if espActive then
@@ -824,5 +786,8 @@ print("========================================")
 print("  ✅ SIX SEVEN PRONTO!")
 print("  📌 Ligue o ESP para ver os pets")
 print("  📌 Ligue o Auto Capture")
-print("  📌 O script vai: Teleportar → Usar Laço → Clicar")
+print("  📌 O script vai:")
+print("     1 - Teleportar até o pet")
+print("     2 - Ativar o laço (slot 1)")
+print("     3 - Clicar no pet")
 print("========================================")
