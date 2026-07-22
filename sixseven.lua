@@ -1,9 +1,9 @@
 --[[
-    Six Seven - Captura Funcionando
+    Six Seven - Laço Funcionando
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - CAPTURA FUNCIONANDO...")
+print("🔄 CARREGANDO SIX SEVEN - LAÇO FUNCIONANDO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -105,7 +105,7 @@ local function EquipLasso()
                     if Humanoid then
                         Humanoid:EquipTool(item)
                         print("🎯 Laço equipado!")
-                        task.wait(0.2)
+                        task.wait(0.15)
                         return true
                     end
                 end
@@ -126,6 +126,34 @@ local function EquipLasso()
 end
 
 -- ========================================
+-- FUNÇÃO PARA ATIVAR O LAÇO
+-- ========================================
+local function ActivateLasso()
+    -- Tenta ativar via tool
+    pcall(function()
+        local tool = Humanoid and Humanoid:FindFirstChild("ActiveTool")
+        if tool then
+            tool:Activate()
+            print("🎯 Laço ativado!")
+            task.wait(0.1)
+            return true
+        end
+    end)
+    
+    -- Tenta ativar via VirtualInput (clique do mouse)
+    pcall(function()
+        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+        task.wait(0.05)
+        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+        print("🖱️ Clique para ativar laço!")
+        task.wait(0.1)
+        return true
+    end)
+    
+    return false
+end
+
+-- ========================================
 -- FUNÇÃO PARA CLICAR NO PET (COM LAÇO)
 -- ========================================
 local function ClickOnPet(pet)
@@ -133,24 +161,19 @@ local function ClickOnPet(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
-    -- Equipa o laço primeiro
+    -- Equipa o laço
     EquipLasso()
     task.wait(0.2)
     
     -- Ativa o laço
-    pcall(function()
-        local tool = Humanoid and Humanoid:FindFirstChild("ActiveTool")
-        if tool then
-            tool:Activate()
-            print("🎯 Laço ativado!")
-        end
-    end)
-    task.wait(0.1)
+    ActivateLasso()
+    task.wait(0.2)
     
-    -- Tenta via Remote (captura direta)
+    -- Tenta capturar via Remote (mais confiável)
     local remote = ReplicatedStorage:FindFirstChild("CapturePet")
         or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Capture")
         or ReplicatedStorage:FindFirstChild("Events"):FindFirstChild("Capture")
+        or ReplicatedStorage:FindFirstChild("RemoteEvent")
     
     if remote then
         pcall(function() 
@@ -161,13 +184,12 @@ local function ClickOnPet(pet)
         end)
     end
     
-    -- Fallback: clicar no pet com o laço
+    -- Fallback: clicar no pet com o laço ativado
     local camera = workspace.CurrentCamera
     if not camera then return false end
     
     local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
     if not onScreen then 
-        -- Se não está na tela, teleporta mais perto
         return false 
     end
     
@@ -177,9 +199,10 @@ local function ClickOnPet(pet)
             -- Move o mouse até o pet
             mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
             task.wait(0.1)
-            -- Clica com o laço ativado
+            
+            -- Clica no pet (com o laço ativado)
             mouse.Button1Click()
-            print("🖱️ Clique no pet com laço: " .. pet.Name)
+            print("🖱️ Clique no pet: " .. pet.Name)
             task.wait(0.5)
             return true
         end
@@ -671,7 +694,7 @@ local function CreateMenu()
     statusLabel.TextSize = 13
     statusLabel.Font = Enum.Font.Gotham
 
-    -- Botão flutuante
+    -- Float
     local floatBtn = Instance.new("TextButton")
     floatBtn.Parent = screenGui
     floatBtn.Size = UDim2.new(0, 45, 0, 45)
@@ -717,7 +740,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - CAPTURA FUNCIONANDO")
+print("  ✧ SIX SEVEN - LAÇO FUNCIONANDO")
 print("========================================")
 
 pcall(CreateMenu)
@@ -737,6 +760,6 @@ end)
 print("========================================")
 print("  ✅ PRONTO!")
 print("  📌 ESP: Mostra pets")
-print("  📌 Auto: Teleporta → Laço → Clica → Captura")
+print("  📌 Auto: Teleporta → Equipa Laço → Ativa → Clica → Captura")
 print("  📌 Delay padrão: 5 segundos")
 print("========================================")
