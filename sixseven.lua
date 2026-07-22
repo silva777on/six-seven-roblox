@@ -1,9 +1,9 @@
 --[[
-    Six Seven - Versão Original (ESP funcionando)
+    Six Seven - Com Delay de 5s
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN ORIGINAL...")
+print("🔄 CARREGANDO SIX SEVEN - DELAY 5s...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -21,7 +21,7 @@ local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
 local Settings = {
     AutoCapture = { 
         Enabled = false, 
-        Delay = 2.0,
+        Delay = 5.0,  -- DELAY PADRÃO DE 5 SEGUNDOS
         TeleportDelay = 0.3
     },
     ESP = {
@@ -43,7 +43,7 @@ local petPositions = {}
 local petList = {}
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR PETS (ORIGINAL)
+-- FUNÇÃO PARA ENCONTRAR PETS
 -- ========================================
 local function FindAllPets()
     local pets = {}
@@ -115,7 +115,7 @@ local function SmoothTeleport(targetPos)
 end
 
 -- ========================================
--- CLICAR NO PET (ORIGINAL)
+-- CLICAR NO PET
 -- ========================================
 local function ClickOnPet(pet)
     if not pet then return false end
@@ -237,7 +237,7 @@ local function AutoCaptureLoop()
 end
 
 -- ========================================
--- SISTEMA ESP (ORIGINAL - FUNCIONAVA)
+-- SISTEMA ESP
 -- ========================================
 local function CreateESP(pet)
     if not pet or not pet:IsA("Model") then return end
@@ -380,8 +380,8 @@ local function CreateMenu()
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 280, 0, 200)
-    mainFrame.Position = UDim2.new(0.5, -140, 0.5, -100)
+    mainFrame.Size = UDim2.new(0, 300, 0, 250)
+    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -125)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
@@ -390,28 +390,28 @@ local function CreateMenu()
 
     local corner = Instance.new("UICorner")
     corner.Parent = mainFrame
-    corner.CornerRadius = UDim.new(0, 10)
+    corner.CornerRadius = UDim.new(0, 12)
 
     -- Título
     local title = Instance.new("TextLabel")
     title.Parent = mainFrame
-    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Size = UDim2.new(1, 0, 0, 35)
     title.BackgroundColor3 = Color3.fromRGB(40, 30, 70)
     title.BackgroundTransparency = 0.3
     title.Text = "✧ Six Seven"
     title.TextColor3 = Color3.fromRGB(190, 160, 255)
-    title.TextSize = 16
+    title.TextSize = 18
     title.Font = Enum.Font.GothamBold
 
     local titleCorner = Instance.new("UICorner")
     titleCorner.Parent = title
-    titleCorner.CornerRadius = UDim.new(0, 10)
+    titleCorner.CornerRadius = UDim.new(0, 12)
 
     -- Fechar
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
     closeBtn.Size = UDim2.new(0, 25, 0, 25)
-    closeBtn.Position = UDim2.new(1, -30, 0, 3)
+    closeBtn.Position = UDim2.new(1, -30, 0, 5)
     closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
     closeBtn.BackgroundTransparency = 0.5
     closeBtn.Text = "X"
@@ -427,19 +427,19 @@ local function CreateMenu()
     -- Container
     local content = Instance.new("Frame")
     content.Parent = mainFrame
-    content.Size = UDim2.new(1, -20, 1, -45)
-    content.Position = UDim2.new(0, 10, 0, 35)
+    content.Size = UDim2.new(1, -20, 1, -50)
+    content.Position = UDim2.new(0, 10, 0, 40)
     content.BackgroundTransparency = 1
 
-    -- ESP
+    -- Botão ESP
     local espBtn = Instance.new("TextButton")
     espBtn.Parent = content
-    espBtn.Size = UDim2.new(1, 0, 0, 35)
+    espBtn.Size = UDim2.new(1, 0, 0, 40)
     espBtn.Position = UDim2.new(0, 0, 0, 0)
     espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
-    espBtn.Text = "🔴 ESP"
+    espBtn.Text = "🔴 ESP: OFF"
     espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    espBtn.TextSize = 15
+    espBtn.TextSize = 16
     espBtn.Font = Enum.Font.GothamBold
     espBtn.BorderSizePixel = 0
 
@@ -449,7 +449,7 @@ local function CreateMenu()
 
     espBtn.MouseButton1Click:Connect(function()
         espActive = not espActive
-        espBtn.Text = espActive and "🟢 ESP" or "🔴 ESP"
+        espBtn.Text = espActive and "🟢 ESP: ON" or "🔴 ESP: OFF"
         espBtn.BackgroundColor3 = espActive and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
         print("ESP:", espActive and "ON" or "OFF")
         if espActive then
@@ -462,15 +462,15 @@ local function CreateMenu()
         end
     end)
 
-    -- Auto
+    -- Botão Auto Capture
     local autoBtn = Instance.new("TextButton")
     autoBtn.Parent = content
-    autoBtn.Size = UDim2.new(1, 0, 0, 35)
-    autoBtn.Position = UDim2.new(0, 0, 0, 40)
+    autoBtn.Size = UDim2.new(1, 0, 0, 40)
+    autoBtn.Position = UDim2.new(0, 0, 0, 50)
     autoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
-    autoBtn.Text = "🔴 Auto"
+    autoBtn.Text = "🔴 Auto: OFF"
     autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    autoBtn.TextSize = 15
+    autoBtn.TextSize = 16
     autoBtn.Font = Enum.Font.GothamBold
     autoBtn.BorderSizePixel = 0
 
@@ -480,7 +480,7 @@ local function CreateMenu()
 
     autoBtn.MouseButton1Click:Connect(function()
         autoCapture = not autoCapture
-        autoBtn.Text = autoCapture and "🟢 Auto" or "🔴 Auto"
+        autoBtn.Text = autoCapture and "🟢 Auto: ON" or "🔴 Auto: OFF"
         autoBtn.BackgroundColor3 = autoCapture and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
         print("Auto Capture:", autoCapture and "ON" or "OFF")
         if autoCapture then
@@ -493,26 +493,98 @@ local function CreateMenu()
         end
     end)
 
+    -- Delay Label
+    local delayLabel = Instance.new("TextLabel")
+    delayLabel.Parent = content
+    delayLabel.Size = UDim2.new(1, 0, 0, 25)
+    delayLabel.Position = UDim2.new(0, 0, 0, 100)
+    delayLabel.BackgroundTransparency = 1
+    delayLabel.Text = "⏱️ Delay: " .. Settings.AutoCapture.Delay .. "s"
+    delayLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
+    delayLabel.TextSize = 14
+    delayLabel.Font = Enum.Font.Gotham
+
+    -- Botões de Delay
+    local delayBtn1 = Instance.new("TextButton")
+    delayBtn1.Parent = content
+    delayBtn1.Size = UDim2.new(0.33, -5, 0, 30)
+    delayBtn1.Position = UDim2.new(0, 0, 0, 130)
+    delayBtn1.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+    delayBtn1.Text = "⬅️"
+    delayBtn1.TextColor3 = Color3.fromRGB(255, 255, 255)
+    delayBtn1.TextSize = 18
+    delayBtn1.Font = Enum.Font.GothamBold
+    delayBtn1.BorderSizePixel = 0
+
+    local delayCorner1 = Instance.new("UICorner")
+    delayCorner1.Parent = delayBtn1
+    delayCorner1.CornerRadius = UDim.new(0, 5)
+
+    local delayBtn2 = Instance.new("TextButton")
+    delayBtn2.Parent = content
+    delayBtn2.Size = UDim2.new(0.34, -5, 0, 30)
+    delayBtn2.Position = UDim2.new(0.33, 5, 0, 130)
+    delayBtn2.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+    delayBtn2.Text = "5s"
+    delayBtn2.TextColor3 = Color3.fromRGB(255, 255, 255)
+    delayBtn2.TextSize = 14
+    delayBtn2.Font = Enum.Font.GothamBold
+    delayBtn2.BorderSizePixel = 0
+
+    local delayCorner2 = Instance.new("UICorner")
+    delayCorner2.Parent = delayBtn2
+    delayCorner2.CornerRadius = UDim.new(0, 5)
+
+    local delayBtn3 = Instance.new("TextButton")
+    delayBtn3.Parent = content
+    delayBtn3.Size = UDim2.new(0.33, -5, 0, 30)
+    delayBtn3.Position = UDim2.new(0.67, 5, 0, 130)
+    delayBtn3.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
+    delayBtn3.Text = "➡️"
+    delayBtn3.TextColor3 = Color3.fromRGB(255, 255, 255)
+    delayBtn3.TextSize = 18
+    delayBtn3.Font = Enum.Font.GothamBold
+    delayBtn3.BorderSizePixel = 0
+
+    local delayCorner3 = Instance.new("UICorner")
+    delayCorner3.Parent = delayBtn3
+    delayCorner3.CornerRadius = UDim.new(0, 5)
+
+    delayBtn1.MouseButton1Click:Connect(function()
+        Settings.AutoCapture.Delay = math.max(Settings.AutoCapture.Delay - 0.5, 0.5)
+        delayLabel.Text = "⏱️ Delay: " .. Settings.AutoCapture.Delay .. "s"
+    end)
+
+    delayBtn2.MouseButton1Click:Connect(function()
+        Settings.AutoCapture.Delay = 5.0
+        delayLabel.Text = "⏱️ Delay: 5.0s"
+    end)
+
+    delayBtn3.MouseButton1Click:Connect(function()
+        Settings.AutoCapture.Delay = math.min(Settings.AutoCapture.Delay + 0.5, 5)
+        delayLabel.Text = "⏱️ Delay: " .. Settings.AutoCapture.Delay .. "s"
+    end)
+
     -- Status
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Parent = content
     statusLabel.Size = UDim2.new(1, 0, 0, 25)
-    statusLabel.Position = UDim2.new(0, 0, 0, 80)
+    statusLabel.Position = UDim2.new(0, 0, 0, 170)
     statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "📊 Pronto"
+    statusLabel.Text = "📊 Status: Pronto"
     statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
-    statusLabel.TextSize = 12
+    statusLabel.TextSize = 13
     statusLabel.Font = Enum.Font.Gotham
 
-    -- Float
+    -- Botão flutuante
     local floatBtn = Instance.new("TextButton")
     floatBtn.Parent = screenGui
-    floatBtn.Size = UDim2.new(0, 40, 0, 40)
-    floatBtn.Position = UDim2.new(0.93, -20, 0.93, -20)
+    floatBtn.Size = UDim2.new(0, 45, 0, 45)
+    floatBtn.Position = UDim2.new(0.93, -22, 0.93, -22)
     floatBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 220)
     floatBtn.Text = "✧"
     floatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    floatBtn.TextSize = 22
+    floatBtn.TextSize = 24
     floatBtn.Font = Enum.Font.GothamBold
     floatBtn.BorderSizePixel = 0
     floatBtn.Visible = false
@@ -534,11 +606,12 @@ local function CreateMenu()
     closeBtn.MouseButton1Click:Connect(CloseMenu)
     floatBtn.MouseButton1Click:Connect(OpenMenu)
 
+    -- Atualiza status
     task.spawn(function()
         while true do
             task.wait(2)
             local count = #FindAllPets()
-            statusLabel.Text = "📊 Pets: " .. count
+            statusLabel.Text = "📊 Pets: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF")
         end
     end)
 
@@ -550,7 +623,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - ORIGINAL")
+print("  ✧ SIX SEVEN - DELAY 5s")
 print("========================================")
 
 pcall(CreateMenu)
@@ -570,4 +643,5 @@ print("========================================")
 print("  ✅ PRONTO!")
 print("  📌 ESP: Mostra pets")
 print("  📌 Auto: Teleporta + Clica")
+print("  📌 Delay padrão: 5 segundos")
 print("========================================")
