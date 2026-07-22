@@ -1,10 +1,9 @@
 --[[
-    Six Seven - Captura com Clique Rápido
+    Six Seven - Auto Farm & ESP (Versão Decodificada)
     Game: [🍎] Capture e Domestique!
-    Baseado no script ofuscado que você enviou
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - CLIQUE RÁPIDO...")
+print("🔄 CARREGANDO SIX SEVEN DECODIFICADO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -26,8 +25,8 @@ local Settings = {
         Enabled = false, 
         Delay = 3.0,
         TeleportDelay = 0.3,
-        ClickSpeed = 0.02,    -- Velocidade dos cliques (menos = mais rápido)
-        TotalClicks = 30      -- Quantos cliques para encher a barra
+        ClickSpeed = 0.02,
+        TotalClicks = 30
     },
     ESP = {
         Enabled = false,
@@ -141,7 +140,7 @@ local function EquipLasso()
     end)
     
     return false
-}
+end
 
 -- ========================================
 -- FUNÇÃO PARA ATIVAR O LAÇO
@@ -159,7 +158,7 @@ local function ActivateLasso()
     end)
     
     return true
-}
+end
 
 -- ========================================
 -- FUNÇÃO PARA LANÇAR O LAÇO NO PET
@@ -237,7 +236,7 @@ local function RapidClick()
     
     print("✅ Cliques concluídos!")
     return true
-end
+}
 
 -- ========================================
 -- TELEPORTE SUAVE
@@ -783,7 +782,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - CLIQUE RÁPIDO")
+print("  ✧ SIX SEVEN - DECODIFICADO")
 print("========================================")
 print("  📖 COMO FUNCIONA:")
 print("  1. Teleporta até o pet")
