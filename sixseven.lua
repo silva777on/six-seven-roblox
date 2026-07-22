@@ -1,4 +1,4 @@
--- SIX SEVEN - VERSÃO COM LASSO
+-- SIX SEVEN - CAPTURA COMPLETA COM MINIGAME
 print("🚀 INICIANDO SIX SEVEN...")
 
 -- ===== SERVIÇOS =====
@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -25,6 +25,7 @@ local config = {
 
 local espObjects = {}
 local petPositions = {}
+local isCapturing = false
 
 -- ===== FUNÇÃO PARA ENCONTRAR PETS =====
 local function FindPets()
@@ -102,13 +103,9 @@ end
 local function EquipLasso()
     print("🔍 Procurando lasso...")
     
-    -- Procura o lasso no inventário do jogador
     local backpack = Player:FindFirstChild("Backpack")
-    local starterGear = Player:FindFirstChild("StarterGear")
-    
     local lasso = nil
     
-    -- Procura na mochila
     if backpack then
         for _, item in pairs(backpack:GetChildren()) do
             local name = item.Name:lower()
@@ -119,22 +116,9 @@ local function EquipLasso()
         end
     end
     
-    -- Se não achou, procura no StarterGear
-    if not lasso and starterGear then
-        for _, item in pairs(starterGear:GetChildren()) do
-            local name = item.Name:lower()
-            if name:find("lasso") or name:find("laço") or name:find("corda") or name:find("rope") then
-                lasso = item
-                break
-            end
-        end
-    end
-    
-    -- Se achou, equipa
     if lasso then
         print("✅ Lasso encontrado: " .. lasso.Name)
         pcall(function()
-            -- Tenta equipar via ferramenta
             if lasso:IsA("Tool") then
                 lasso.Parent = Character
                 print("✅ Lasso equipado!")
@@ -149,14 +133,14 @@ local function EquipLasso()
     return false
 end
 
--- ===== FUNÇÃO DE CAPTURA COM LASSO =====
-local function CapturePet(pet)
+-- ===== FUNÇÃO PARA CLICAR E CARREGAR BARRINHA =====
+local function ClickAndCharge(pet)
     if not pet then return false end
     
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
-    print("🎯 Capturando: " .. pet.Name)
+    print("🎯 Iniciando captura de: " .. pet.Name)
     
     -- 1. Equipa o lasso
     EquipLasso()
@@ -167,9 +151,8 @@ local function CapturePet(pet)
     TeleportTo(targetPos)
     task.wait(0.3)
     
-    -- 3. Tenta capturar com o lasso
+    -- 3. Clica no pet para jogar o lasso
     local success = false
-    
     pcall(function()
         local mouse = Player:GetMouse()
         if not mouse then return end
@@ -177,23 +160,59 @@ local function CapturePet(pet)
         local cam = workspace.CurrentCamera
         if not cam then return end
         
-        -- Converte posição 3D para tela
         local screenPos, onScreen = cam:WorldToViewportPoint(hrp.Position)
         if not onScreen then return end
         
-        -- Move o mouse e clica (usa o lasso)
         mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
         task.wait(0.2)
         mouse.Button1Click()
-        
+        print("🖱️ Lasso jogado em: " .. pet.Name)
         success = true
-        print("🖱️ Lasso usado em: " .. pet.Name)
     end)
     
-    -- 4. Espera a captura
+    if not success then
+        print("❌ Falha ao jogar lasso")
+        return false
+    end
+    
+    -- 4. Aguarda o minigame da barrinha aparecer
     task.wait(1.5)
     
-    return success
+    -- 5. FICA CLICANDO NA TELA PARA CARREGAR A BARRINHA
+    print("🔄 Carregando barrinha...")
+    
+    -- Clica várias vezes na tela para carregar a barrinha
+    local clickCount = 0
+    local maxClicks = 15 -- Número de cliques para encher a barrinha
+    
+    for i = 1, maxClicks do
+        if not config.autoOn then break end
+        
+        pcall(function()
+            local mouse = Player:GetMouse()
+            if mouse then
+                -- Clica no centro da tela
+                mouse.Move(Vector2.new(mouse.X, mouse.Y))
+                task.wait(0.05)
+                mouse.Button1Click()
+                clickCount = clickCount + 1
+                
+                -- Mostra progresso a cada 3 cliques
+                if clickCount % 3 == 0 then
+                    print("⏳ Carregando: " .. math.floor((clickCount / maxClicks) * 100) .. "%")
+                end
+            end
+        end)
+        
+        task.wait(0.1)
+    end
+    
+    print("✅ Barrinha carregada! (" .. clickCount .. " cliques)")
+    
+    -- 6. Aguarda a captura finalizar
+    task.wait(2)
+    
+    return true
 end
 
 -- ===== LEVAR PET PARA A BASE =====
@@ -213,7 +232,6 @@ local function BringPetToBase(pet)
         task.wait(0.3)
     end
     
-    -- Tenta soltar o pet na base
     local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet")
         or ReplicatedStorage:FindFirstChild("DropPet")
         or ReplicatedStorage:FindFirstChild("StorePet")
@@ -566,8 +584,8 @@ local function CreateMenu()
                     end
                     
                     if target then
-                        -- CAPTURA COMPLETA AQUI!
-                        local ok = CapturePet(target)
+                        -- CAPTURA COMPLETA COM MINIGAME
+                        local ok = ClickAndCharge(target)
                         if ok then
                             config.petsCapturados[target] = true
                             print("✅ " .. target.Name .. " capturado!")
@@ -586,7 +604,7 @@ local function CreateMenu()
                                 countdownLabel.Parent.Visible = false
                             end
                         else
-                            print("❌ Falha ao capturar " .. target.Name .. ", tentando próximo...")
+                            print("❌ Falha ao capturar " .. target.Name)
                         end
                         task.wait(1)
                     else
@@ -695,11 +713,11 @@ end
 
 -- ===== INICIAR =====
 print("========================================")
-print("  ✧ SIX SEVEN - COM LASSO")
+print("  ✧ SIX SEVEN - CAPTURA COMPLETA")
 print("========================================")
-print("  ✅ Equipa o lasso automaticamente")
-print("  ✅ Teleporta + Usa lasso no pet")
-print("  ✅ Leva para a base")
+print("  ✅ Joga o lasso no pet")
+print("  ✅ Clica na tela pra carregar barrinha")
+print("  ✅ Leva o pet para a base")
 print("========================================")
 
 local success, err = pcall(CreateMenu)
