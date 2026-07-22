@@ -1,5 +1,5 @@
 --[[
-    SIX SEVEN - COMPLETO (Com Campos Editáveis + Contador 5s Ajustável)
+    SIX SEVEN - COMPLETO (Com Seletor de Tempo 1-5s)
     Game: [🍎] Capture e Domestique!
 ]]
 
@@ -420,21 +420,27 @@ local function StartMonitoring()
 end
 
 -- ========================================
--- CRIAR SELEÇÃO DE TEMPO (1-5 segundos)
+-- CRIAR SELEÇÃO DE TEMPO (1-5 segundos) - MELHORADA
 -- ========================================
 local function CreateTimeSelector(parent, labelText, defaultValue, minValue, maxValue, callback)
     local frame = Instance.new("Frame")
     frame.Parent = parent
-    frame.Size = UDim2.new(1, 0, 0, 32)
-    frame.BackgroundTransparency = 1
+    frame.Size = UDim2.new(1, 0, 0, 34)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
+    frame.BackgroundTransparency = 0.3
+    frame.BorderSizePixel = 0
+    
+    local corner = Instance.new("UICorner")
+    corner.Parent = frame
+    corner.CornerRadius = UDim.new(0, 6)
 
     -- Label
     local label = Instance.new("TextLabel")
     label.Parent = frame
-    label.Size = UDim2.new(0.5, 0, 1, 0)
-    label.Position = UDim2.new(0, 0, 0, 0)
+    label.Size = UDim2.new(0.45, 0, 1, 0)
+    label.Position = UDim2.new(0, 6, 0, 0)
     label.BackgroundTransparency = 1
-    label.Text = labelText
+    label.Text = "⏱️ " .. labelText
     label.TextColor3 = Color3.fromRGB(200, 200, 255)
     label.TextSize = 12
     label.Font = Enum.Font.GothamBold
@@ -443,8 +449,8 @@ local function CreateTimeSelector(parent, labelText, defaultValue, minValue, max
     -- Botão -
     local btnMinus = Instance.new("TextButton")
     btnMinus.Parent = frame
-    btnMinus.Size = UDim2.new(0, 22, 0, 22)
-    btnMinus.Position = UDim2.new(0.7, 0, 0.5, -11)
+    btnMinus.Size = UDim2.new(0, 24, 0, 24)
+    btnMinus.Position = UDim2.new(0.7, 0, 0.5, -12)
     btnMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     btnMinus.Text = "−"
     btnMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -459,12 +465,12 @@ local function CreateTimeSelector(parent, labelText, defaultValue, minValue, max
     -- Campo de texto
     local textBox = Instance.new("TextBox")
     textBox.Parent = frame
-    textBox.Size = UDim2.new(0, 30, 0, 22)
-    textBox.Position = UDim2.new(0.82, 0, 0.5, -11)
+    textBox.Size = UDim2.new(0, 32, 0, 24)
+    textBox.Position = UDim2.new(0.82, 0, 0.5, -12)
     textBox.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
     textBox.Text = tostring(defaultValue) .. "s"
-    textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textBox.TextSize = 13
+    textBox.TextColor3 = Color3.fromRGB(255, 200, 100)
+    textBox.TextSize = 14
     textBox.Font = Enum.Font.GothamBold
     textBox.TextXAlignment = Enum.TextXAlignment.Center
     textBox.BorderSizePixel = 0
@@ -477,8 +483,8 @@ local function CreateTimeSelector(parent, labelText, defaultValue, minValue, max
     -- Botão +
     local btnPlus = Instance.new("TextButton")
     btnPlus.Parent = frame
-    btnPlus.Size = UDim2.new(0, 22, 0, 22)
-    btnPlus.Position = UDim2.new(0.92, 0, 0.5, -11)
+    btnPlus.Size = UDim2.new(0, 24, 0, 24)
+    btnPlus.Position = UDim2.new(0.92, 0, 0.5, -12)
     btnPlus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     btnPlus.Text = "+"
     btnPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -493,7 +499,7 @@ local function CreateTimeSelector(parent, labelText, defaultValue, minValue, max
     local currentValue = defaultValue
 
     local function UpdateValue(newValue)
-        newValue = math.round(math.clamp(newValue, minValue, maxValue))
+        newValue = math.round(math.clamp(newValue, minValue, maxValue) * 2) / 2  -- Arredonda para 0.5
         currentValue = newValue
         textBox.Text = tostring(newValue) .. "s"
         callback(newValue)
@@ -527,14 +533,20 @@ end
 local function CreateEditableField(parent, labelText, defaultValue, minValue, maxValue, callback)
     local frame = Instance.new("Frame")
     frame.Parent = parent
-    frame.Size = UDim2.new(1, 0, 0, 32)
-    frame.BackgroundTransparency = 1
+    frame.Size = UDim2.new(1, 0, 0, 34)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
+    frame.BackgroundTransparency = 0.3
+    frame.BorderSizePixel = 0
+    
+    local corner = Instance.new("UICorner")
+    corner.Parent = frame
+    corner.CornerRadius = UDim.new(0, 6)
 
     -- Label
     local label = Instance.new("TextLabel")
     label.Parent = frame
     label.Size = UDim2.new(0.35, 0, 1, 0)
-    label.Position = UDim2.new(0, 0, 0, 0)
+    label.Position = UDim2.new(0, 6, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = labelText
     label.TextColor3 = Color3.fromRGB(200, 200, 255)
@@ -545,8 +557,8 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     -- Botão -
     local btnMinus = Instance.new("TextButton")
     btnMinus.Parent = frame
-    btnMinus.Size = UDim2.new(0, 22, 0, 22)
-    btnMinus.Position = UDim2.new(0.65, 0, 0.5, -11)
+    btnMinus.Size = UDim2.new(0, 24, 0, 24)
+    btnMinus.Position = UDim2.new(0.65, 0, 0.5, -12)
     btnMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     btnMinus.Text = "−"
     btnMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -561,8 +573,8 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     -- Campo de texto (editável)
     local textBox = Instance.new("TextBox")
     textBox.Parent = frame
-    textBox.Size = UDim2.new(0, 35, 0, 22)
-    textBox.Position = UDim2.new(0.77, 0, 0.5, -11)
+    textBox.Size = UDim2.new(0, 35, 0, 24)
+    textBox.Position = UDim2.new(0.77, 0, 0.5, -12)
     textBox.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
     textBox.Text = tostring(defaultValue)
     textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -579,8 +591,8 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     -- Botão +
     local btnPlus = Instance.new("TextButton")
     btnPlus.Parent = frame
-    btnPlus.Size = UDim2.new(0, 22, 0, 22)
-    btnPlus.Position = UDim2.new(0.9, 0, 0.5, -11)
+    btnPlus.Size = UDim2.new(0, 24, 0, 24)
+    btnPlus.Position = UDim2.new(0.9, 0, 0.5, -12)
     btnPlus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     btnPlus.Text = "+"
     btnPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -633,11 +645,11 @@ local function CreateMenu()
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Frame principal
+    -- Frame principal - AUMENTADO
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 220, 0, 350)  -- Aumentado para caber o novo seletor
-    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -175)
+    mainFrame.Size = UDim2.new(0, 240, 0, 400)  -- Aumentei bastante
+    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -200)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -687,20 +699,20 @@ local function CreateMenu()
     local sep = Instance.new("Frame")
     sep.Parent = mainFrame
     sep.Size = UDim2.new(0.9, 0, 0, 1)
-    sep.Position = UDim2.new(0.05, 0, 0.11, 0)
+    sep.Position = UDim2.new(0.05, 0, 0.1, 0)
     sep.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     sep.BackgroundTransparency = 0.5
 
     -- Container dos botões
     local container = Instance.new("Frame")
     container.Parent = mainFrame
-    container.Size = UDim2.new(0.9, 0, 0.75, 0)
-    container.Position = UDim2.new(0.05, 0, 0.15, 0)
+    container.Size = UDim2.new(0.92, 0, 0.76, 0)
+    container.Position = UDim2.new(0.04, 0, 0.14, 0)
     container.BackgroundTransparency = 1
 
     local layout = Instance.new("UIListLayout")
     layout.Parent = container
-    layout.Padding = UDim.new(0, 4)
+    layout.Padding = UDim.new(0, 6)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
 
     -- ========================================
@@ -724,17 +736,17 @@ local function CreateMenu()
     -- ========================================
     local espBtn = Instance.new("TextButton")
     espBtn.Parent = container
-    espBtn.Size = UDim2.new(1, 0, 0, 28)
+    espBtn.Size = UDim2.new(1, 0, 0, 32)
     espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     espBtn.Text = "🔴 ESP: OFF"
     espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    espBtn.TextSize = 13
+    espBtn.TextSize = 14
     espBtn.Font = Enum.Font.GothamBold
     espBtn.BorderSizePixel = 0
     
     local espCorner = Instance.new("UICorner")
     espCorner.Parent = espBtn
-    espCorner.CornerRadius = UDim.new(0, 5)
+    espCorner.CornerRadius = UDim.new(0, 6)
 
     espBtn.MouseButton1Click:Connect(function()
         espActive = not espActive
@@ -755,17 +767,17 @@ local function CreateMenu()
     -- ========================================
     local autoBtn = Instance.new("TextButton")
     autoBtn.Parent = container
-    autoBtn.Size = UDim2.new(1, 0, 0, 28)
+    autoBtn.Size = UDim2.new(1, 0, 0, 32)
     autoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     autoBtn.Text = "🔴 AUTO: OFF"
     autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    autoBtn.TextSize = 13
+    autoBtn.TextSize = 14
     autoBtn.Font = Enum.Font.GothamBold
     autoBtn.BorderSizePixel = 0
     
     local autoCorner = Instance.new("UICorner")
     autoCorner.Parent = autoBtn
-    autoCorner.CornerRadius = UDim.new(0, 5)
+    autoCorner.CornerRadius = UDim.new(0, 6)
 
     autoBtn.MouseButton1Click:Connect(function()
         autoCapture = not autoCapture
@@ -786,9 +798,9 @@ local function CreateMenu()
     end)
 
     -- ========================================
-    -- SELETOR DE TEMPO (1-5 segundos) NOVO!
+    -- SELETOR DE TEMPO (1-5 segundos) - NOVO!
     -- ========================================
-    CreateTimeSelector(container, "⏱️ Tempo entre pets", Settings.AutoCapture.CountdownTime, 1, 5, function(value)
+    CreateTimeSelector(container, "Tempo entre pets", Settings.AutoCapture.CountdownTime, 1, 5, function(value)
         Settings.AutoCapture.CountdownTime = value
         print("⏱️ Tempo ajustado para: " .. value .. "s")
     end)
@@ -830,7 +842,7 @@ local function CreateMenu()
     -- ========================================
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Parent = mainFrame
-    statusLabel.Size = UDim2.new(0.9, 0, 0, 18)
+    statusLabel.Size = UDim2.new(0.9, 0, 0, 20)
     statusLabel.Position = UDim2.new(0.05, 0, 0.9, 0)
     statusLabel.BackgroundTransparency = 1
     statusLabel.Text = "📊 Pronto"
@@ -891,29 +903,4 @@ end
 print("========================================")
 print("  ✧ SIX SEVEN - EDITÁVEL")
 print("========================================")
-print("  📌 Digite o valor no campo")
-print("  📌 Use + e - para ajustar")
-print("  📌 ESP e Auto Capture")
-print("  📌 Seletor de tempo: 1s a 5s")
-print("========================================")
-
-pcall(CreateMenu)
-StartMonitoring()
-
-task.wait(0.5)
-AtualizarVelocidade()
-AtualizarJump()
-
-Player.CharacterAdded:Connect(function(newChar)
-    Character = newChar
-    RootPart = newChar:FindFirstChild("HumanoidRootPart")
-    Humanoid = newChar:FindFirstChild("Humanoid")
-    task.wait(1)
-    AtualizarVelocidade()
-    AtualizarJump()
-    if espActive then
-        UpdateESP()
-    end
-end)
-
-print("================================
+print("  📌 Digite
