@@ -1,9 +1,9 @@
 --[[
-    SIX SEVEN - COMPLETO (Velocidade + Jump + ESP + Auto)
+    SIX SEVEN - COMPLETO (Versão Compacta)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - COMPLETO...")
+print("🔄 CARREGANDO SIX SEVEN - COMPACTO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -105,14 +105,12 @@ local function AtualizarVelocidade()
     if not Humanoid then return end
     local speed = 16 + (Settings.Speed.Value / 100) * 84
     Humanoid.WalkSpeed = speed
-    print("🏃 Velocidade: " .. math.floor(speed))
 end
 
 local function AtualizarJump()
     if not Humanoid then return end
     local jump = 50 + (Settings.Jump.Value / 100) * 50
     Humanoid.JumpPower = jump
-    print("🦘 Jump: " .. math.floor(jump))
 end
 
 -- ========================================
@@ -162,7 +160,6 @@ local function ClickOnPet(pet)
             mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
             task.wait(0.1)
             mouse.Button1Click()
-            print("🖱️ Clique em: " .. pet.Name)
             return true
         end
     end)
@@ -177,8 +174,6 @@ local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
-    
-    print("🎯 Capturando: " .. pet.Name)
     
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     SmoothTeleport(targetPos)
@@ -214,7 +209,6 @@ local function BringPetToBase(pet)
     if releaseRemote then
         pcall(function() 
             releaseRemote:FireServer(pet) 
-            print("📦 Pet solto na base!")
         end)
         task.wait(0.3)
     end
@@ -316,8 +310,6 @@ local function CreateESP(pet)
         Label = label,
         DistLabel = distLabel
     }
-    
-    print("✅ ESP criado para: " .. pet.Name)
 end
 
 local function RemoveESP(pet)
@@ -386,7 +378,6 @@ local function StartMonitoring()
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
                 local name = obj.Name:lower()
                 if not name:find("npc") and not name:find("humano") and not name:find("personagem") then
-                    print("🔍 Novo pet: " .. obj.Name)
                     if espActive then
                         task.wait(0.1)
                         UpdateESP()
@@ -398,40 +389,40 @@ local function StartMonitoring()
 end
 
 -- ========================================
--- CRIAR SLIDER
+-- CRIAR SLIDER COMPACTO
 -- ========================================
 local function CreateSlider(parent, labelText, min, max, default, callback)
     local frame = Instance.new("Frame")
     frame.Parent = parent
-    frame.Size = UDim2.new(1, 0, 0, 45)
+    frame.Size = UDim2.new(1, 0, 0, 35)
     frame.BackgroundTransparency = 1
     
     local label = Instance.new("TextLabel")
     label.Parent = frame
-    label.Size = UDim2.new(0.6, 0, 0, 20)
+    label.Size = UDim2.new(0.5, 0, 0, 18)
     label.Position = UDim2.new(0, 0, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = labelText
     label.TextColor3 = Color3.fromRGB(200, 200, 255)
-    label.TextSize = 13
+    label.TextSize = 12
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
     
     local valueLabel = Instance.new("TextLabel")
     valueLabel.Parent = frame
-    valueLabel.Size = UDim2.new(0.3, 0, 0, 20)
-    valueLabel.Position = UDim2.new(0.7, 0, 0, 0)
+    valueLabel.Size = UDim2.new(0.2, 0, 0, 18)
+    valueLabel.Position = UDim2.new(0.8, 0, 0, 0)
     valueLabel.BackgroundTransparency = 1
     valueLabel.Text = tostring(default)
     valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    valueLabel.TextSize = 13
+    valueLabel.TextSize = 12
     valueLabel.Font = Enum.Font.GothamBold
     valueLabel.TextXAlignment = Enum.TextXAlignment.Right
     
     local sliderBg = Instance.new("Frame")
     sliderBg.Parent = frame
-    sliderBg.Size = UDim2.new(1, 0, 0, 8)
-    sliderBg.Position = UDim2.new(0, 0, 0, 25)
+    sliderBg.Size = UDim2.new(1, 0, 0, 6)
+    sliderBg.Position = UDim2.new(0, 0, 0, 22)
     sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
     sliderBg.BorderSizePixel = 0
     
@@ -451,8 +442,8 @@ local function CreateSlider(parent, labelText, min, max, default, callback)
     
     local sliderBtn = Instance.new("TextButton")
     sliderBtn.Parent = sliderBg
-    sliderBtn.Size = UDim2.new(0, 16, 0, 16)
-    sliderBtn.Position = UDim2.new((default - min) / (max - min), -8, 0.5, -8)
+    sliderBtn.Size = UDim2.new(0, 14, 0, 14)
+    sliderBtn.Position = UDim2.new((default - min) / (max - min), -7, 0.5, -7)
     sliderBtn.BackgroundColor3 = Color3.fromRGB(180, 130, 255)
     sliderBtn.Text = ""
     sliderBtn.BorderSizePixel = 0
@@ -467,11 +458,12 @@ local function CreateSlider(parent, labelText, min, max, default, callback)
     local function UpdateSlider(input)
         local pos = input.Position.X - sliderBg.AbsolutePosition.X
         local width = sliderBg.AbsoluteSize.X
+        if width <= 0 then return end
         local percent = math.clamp(pos / width, 0, 1)
         local value = math.round(min + percent * (max - min))
         
         fill.Size = UDim2.new(percent, 0, 1, 0)
-        sliderBtn.Position = UDim2.new(percent, -8, 0.5, -8)
+        sliderBtn.Position = UDim2.new(percent, -7, 0.5, -7)
         valueLabel.Text = tostring(value)
         
         callback(value)
@@ -504,7 +496,7 @@ local function CreateSlider(parent, labelText, min, max, default, callback)
 end
 
 -- ========================================
--- MENU COMPLETO
+-- MENU COMPACTO
 -- ========================================
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
@@ -512,13 +504,13 @@ local function CreateMenu()
     screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
 
-    -- Frame principal
+    -- Frame principal (menor e com transparência)
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 320, 0, 420)
-    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -210)
+    mainFrame.Size = UDim2.new(0, 230, 0, 280)
+    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -140)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
-    mainFrame.BackgroundTransparency = 0.05
+    mainFrame.BackgroundTransparency = 0.15
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
     mainFrame.Draggable = true
@@ -527,77 +519,77 @@ local function CreateMenu()
 
     local corner = Instance.new("UICorner")
     corner.Parent = mainFrame
-    corner.CornerRadius = UDim.new(0, 12)
+    corner.CornerRadius = UDim.new(0, 10)
     
     local stroke = Instance.new("UIStroke")
     stroke.Parent = mainFrame
     stroke.Color = Color3.fromRGB(138, 43, 226)
-    stroke.Thickness = 1.5
+    stroke.Thickness = 1
     stroke.Transparency = 0.3
 
     -- Título
     local title = Instance.new("TextLabel")
     title.Parent = mainFrame
-    title.Size = UDim2.new(1, -80, 0, 40)
-    title.Position = UDim2.new(0, 15, 0, 0)
+    title.Size = UDim2.new(1, -60, 0, 32)
+    title.Position = UDim2.new(0, 10, 0, 0)
     title.BackgroundTransparency = 1
     title.Text = "✧ SIX SEVEN"
     title.TextColor3 = Color3.fromRGB(190, 160, 255)
-    title.TextSize = 20
+    title.TextSize = 16
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Left
 
     -- Botão Minimizar
     local minBtn = Instance.new("TextButton")
     minBtn.Parent = mainFrame
-    minBtn.Size = UDim2.new(0, 30, 0, 30)
-    minBtn.Position = UDim2.new(1, -75, 0, 5)
+    minBtn.Size = UDim2.new(0, 24, 0, 24)
+    minBtn.Position = UDim2.new(1, -54, 0, 4)
     minBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     minBtn.Text = "─"
     minBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    minBtn.TextSize = 18
+    minBtn.TextSize = 16
     minBtn.Font = Enum.Font.GothamBold
     minBtn.BorderSizePixel = 0
     minBtn.AutoButtonColor = false
     
     local minCorner = Instance.new("UICorner")
     minCorner.Parent = minBtn
-    minCorner.CornerRadius = UDim.new(0, 6)
+    minCorner.CornerRadius = UDim.new(0, 5)
 
     -- Botão Fechar
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
-    closeBtn.Size = UDim2.new(0, 30, 0, 30)
-    closeBtn.Position = UDim2.new(1, -40, 0, 5)
+    closeBtn.Size = UDim2.new(0, 24, 0, 24)
+    closeBtn.Position = UDim2.new(1, -28, 0, 4)
     closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
     closeBtn.Text = "✕"
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextSize = 14
+    closeBtn.TextSize = 12
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.BorderSizePixel = 0
     closeBtn.AutoButtonColor = false
     
     local closeCorner = Instance.new("UICorner")
     closeCorner.Parent = closeBtn
-    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.CornerRadius = UDim.new(0, 5)
 
     -- Separador
     local sep = Instance.new("Frame")
     sep.Parent = mainFrame
     sep.Size = UDim2.new(0.9, 0, 0, 1)
-    sep.Position = UDim2.new(0.05, 0, 0.11, 0)
+    sep.Position = UDim2.new(0.05, 0, 0.12, 0)
     sep.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     sep.BackgroundTransparency = 0.5
     sep.BorderSizePixel = 0
 
-    -- Container dos conteúdos (ScrollingFrame)
+    -- Container dos conteúdos
     local contentContainer = Instance.new("ScrollingFrame")
     contentContainer.Parent = mainFrame
-    contentContainer.Size = UDim2.new(1, -20, 1, -60)
-    contentContainer.Position = UDim2.new(0, 10, 0, 50)
+    contentContainer.Size = UDim2.new(1, -10, 1, -50)
+    contentContainer.Position = UDim2.new(0, 5, 0, 38)
     contentContainer.BackgroundTransparency = 1
     contentContainer.BorderSizePixel = 0
-    contentContainer.ScrollBarThickness = 4
+    contentContainer.ScrollBarThickness = 3
     contentContainer.ScrollBarImageColor3 = Color3.fromRGB(138, 43, 226)
     contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
     contentContainer.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
@@ -610,65 +602,61 @@ local function CreateMenu()
 
     local contentLayout = Instance.new("UIListLayout")
     contentLayout.Parent = content
-    contentLayout.Padding = UDim.new(0, 8)
+    contentLayout.Padding = UDim.new(0, 5)
     contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
     -- ========================================
-    -- SEÇÃO: VELOCIDADE
+    -- SLIDERS
     -- ========================================
-    local speedSlider = CreateSlider(content, "🏃 Velocidade", 0, 100, 16, function(value)
+    CreateSlider(content, "🏃 Velocidade", 0, 100, 16, function(value)
         Settings.Speed.Value = value
         AtualizarVelocidade()
     end)
 
-    -- ========================================
-    -- SEÇÃO: JUMP
-    -- ========================================
-    local jumpSlider = CreateSlider(content, "🦘 Pulo", 0, 100, 50, function(value)
+    CreateSlider(content, "🦘 Pulo", 0, 100, 50, function(value)
         Settings.Jump.Value = value
         AtualizarJump()
     end)
 
     -- ========================================
-    -- SEÇÃO: ESP
+    -- BOTÕES (linha dupla)
     -- ========================================
+    -- ESP
     local espFrame = Instance.new("Frame")
     espFrame.Parent = content
-    espFrame.Size = UDim2.new(1, 0, 0, 40)
+    espFrame.Size = UDim2.new(1, 0, 0, 30)
     espFrame.BackgroundTransparency = 1
 
     local espLabel = Instance.new("TextLabel")
     espLabel.Parent = espFrame
-    espLabel.Size = UDim2.new(0.6, 0, 1, 0)
-    espLabel.Position = UDim2.new(0, 0, 0, 0)
+    espLabel.Size = UDim2.new(0.5, 0, 1, 0)
     espLabel.BackgroundTransparency = 1
     espLabel.Text = "🔍 ESP"
     espLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-    espLabel.TextSize = 14
+    espLabel.TextSize = 13
     espLabel.Font = Enum.Font.GothamBold
     espLabel.TextXAlignment = Enum.TextXAlignment.Left
 
     local espBtn = Instance.new("TextButton")
     espBtn.Parent = espFrame
-    espBtn.Size = UDim2.new(0, 80, 0, 30)
-    espBtn.Position = UDim2.new(0.7, 0, 0.5, -15)
+    espBtn.Size = UDim2.new(0, 70, 0, 26)
+    espBtn.Position = UDim2.new(0.7, 0, 0.5, -13)
     espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     espBtn.Text = "🔴 OFF"
     espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    espBtn.TextSize = 13
+    espBtn.TextSize = 12
     espBtn.Font = Enum.Font.GothamBold
     espBtn.BorderSizePixel = 0
     espBtn.AutoButtonColor = false
     
     local espCorner = Instance.new("UICorner")
     espCorner.Parent = espBtn
-    espCorner.CornerRadius = UDim.new(0, 8)
+    espCorner.CornerRadius = UDim.new(0, 6)
 
     espBtn.MouseButton1Click:Connect(function()
         espActive = not espActive
         espBtn.Text = espActive and "🟢 ON" or "🔴 OFF"
         espBtn.BackgroundColor3 = espActive and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 120)
-        print("ESP:", espActive and "ON" or "OFF")
         if espActive then
             UpdateESP()
         else
@@ -679,46 +667,42 @@ local function CreateMenu()
         end
     end)
 
-    -- ========================================
-    -- SEÇÃO: AUTO CAPTURE
-    -- ========================================
+    -- AUTO
     local autoFrame = Instance.new("Frame")
     autoFrame.Parent = content
-    autoFrame.Size = UDim2.new(1, 0, 0, 40)
+    autoFrame.Size = UDim2.new(1, 0, 0, 30)
     autoFrame.BackgroundTransparency = 1
 
     local autoLabel = Instance.new("TextLabel")
     autoLabel.Parent = autoFrame
-    autoLabel.Size = UDim2.new(0.6, 0, 1, 0)
-    autoLabel.Position = UDim2.new(0, 0, 0, 0)
+    autoLabel.Size = UDim2.new(0.5, 0, 1, 0)
     autoLabel.BackgroundTransparency = 1
     autoLabel.Text = "🎯 Auto Capture"
     autoLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-    autoLabel.TextSize = 14
+    autoLabel.TextSize = 13
     autoLabel.Font = Enum.Font.GothamBold
     autoLabel.TextXAlignment = Enum.TextXAlignment.Left
 
     local autoBtn = Instance.new("TextButton")
     autoBtn.Parent = autoFrame
-    autoBtn.Size = UDim2.new(0, 80, 0, 30)
-    autoBtn.Position = UDim2.new(0.7, 0, 0.5, -15)
+    autoBtn.Size = UDim2.new(0, 70, 0, 26)
+    autoBtn.Position = UDim2.new(0.7, 0, 0.5, -13)
     autoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     autoBtn.Text = "🔴 OFF"
     autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    autoBtn.TextSize = 13
+    autoBtn.TextSize = 12
     autoBtn.Font = Enum.Font.GothamBold
     autoBtn.BorderSizePixel = 0
     autoBtn.AutoButtonColor = false
     
     local autoCorner = Instance.new("UICorner")
     autoCorner.Parent = autoBtn
-    autoCorner.CornerRadius = UDim.new(0, 8)
+    autoCorner.CornerRadius = UDim.new(0, 6)
 
     autoBtn.MouseButton1Click:Connect(function()
         autoCapture = not autoCapture
         autoBtn.Text = autoCapture and "🟢 ON" or "🔴 OFF"
         autoBtn.BackgroundColor3 = autoCapture and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 120)
-        print("Auto Capture:", autoCapture and "ON" or "OFF")
         if autoCapture then
             if not autoCaptureRunning then
                 autoCaptureRunning = true
@@ -730,26 +714,26 @@ local function CreateMenu()
     end)
 
     -- ========================================
-    -- SEÇÃO: STATUS
+    -- STATUS
     -- ========================================
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Parent = content
-    statusLabel.Size = UDim2.new(1, 0, 0, 25)
+    statusLabel.Size = UDim2.new(1, 0, 0, 20)
     statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "📊 Status: Pronto"
+    statusLabel.Text = "📊 Pronto"
     statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
-    statusLabel.TextSize = 13
+    statusLabel.TextSize = 11
     statusLabel.Font = Enum.Font.Gotham
 
     -- Botão flutuante
     local floatBtn = Instance.new("TextButton")
     floatBtn.Parent = screenGui
-    floatBtn.Size = UDim2.new(0, 45, 0, 45)
-    floatBtn.Position = UDim2.new(0.93, -22, 0.93, -22)
+    floatBtn.Size = UDim2.new(0, 38, 0, 38)
+    floatBtn.Position = UDim2.new(0.02, 0, 0.5, 20)
     floatBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 220)
     floatBtn.Text = "✧"
     floatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    floatBtn.TextSize = 24
+    floatBtn.TextSize = 20
     floatBtn.Font = Enum.Font.GothamBold
     floatBtn.BorderSizePixel = 0
     floatBtn.Visible = false
@@ -782,7 +766,7 @@ local function CreateMenu()
         while true do
             task.wait(2)
             local count = #FindAllPets()
-            statusLabel.Text = "📊 Pets: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF") .. " | Auto: " .. (autoCapture and "ON" or "OFF")
+            statusLabel.Text = "📊 Pets: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF")
         end
     end)
 
@@ -794,19 +778,16 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - COMPLETO")
+print("  ✧ SIX SEVEN - COMPACTO")
 print("========================================")
-print("  📌 Velocidade: Slider 0-100")
-print("  📌 Pulo: Slider 0-100")
-print("  📌 ESP: Mostra pets")
-print("  📌 Auto: Teleporta + Clica")
-print("  📌 Delay: 5 segundos")
+print("  📌 Menu menor e no canto")
+print("  📌 Velocidade e Pulo")
+print("  📌 ESP e Auto Capture")
 print("========================================")
 
 pcall(CreateMenu)
 StartMonitoring()
 
--- Aplica velocidade e jump iniciais
 task.wait(0.5)
 AtualizarVelocidade()
 AtualizarJump()
@@ -815,7 +796,6 @@ Player.CharacterAdded:Connect(function(newChar)
     Character = newChar
     RootPart = newChar:FindFirstChild("HumanoidRootPart")
     Humanoid = newChar:FindFirstChild("Humanoid")
-    print("🔄 Respawnou!")
     task.wait(1)
     AtualizarVelocidade()
     AtualizarJump()
@@ -826,7 +806,4 @@ end)
 
 print("========================================")
 print("  ✅ PRONTO!")
-print("  📌 Sliders: Velocidade e Pulo")
-print("  📌 ESP: Mostra pets")
-print("  📌 Auto: Teleporta + Clica")
 print("========================================")
