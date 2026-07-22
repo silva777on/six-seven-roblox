@@ -1,16 +1,17 @@
 --[[
-    Six Seven - Auto Farm & ESP (Versão Decodificada)
+    Six Seven - Com Clique Rápido (CORRIGIDO)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN DECODIFICADO...")
+print("🔄 CARREGANDO SIX SEVEN - CLIQUE RÁPIDO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local StarterGui = game:GetService("StarterGui")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -23,7 +24,7 @@ local Humanoid = Character and Character:FindFirstChild("Humanoid")
 local Settings = {
     AutoCapture = { 
         Enabled = false, 
-        Delay = 3.0,
+        Delay = 5.0,
         TeleportDelay = 0.3,
         ClickSpeed = 0.02,
         TotalClicks = 30
@@ -47,26 +48,7 @@ local petPositions = {}
 local petList = {}
 local totalCaptured = 0
 local isProcessing = false
-
--- ========================================
--- LISTA DE NPCS PARA IGNORAR
--- ========================================
-local npcNames = {
-    "npc", "humano", "personagem", "vendedor", "lojista", 
-    "guarda", "civil", "aldeao", "comerciante", "treinador",
-    "professor", "mestre", "ancião", "mercador", "coruja", "owl"
-}
-
-local function IsNPC(obj)
-    if not obj then return false end
-    local name = obj.Name:lower()
-    for _, npc in pairs(npcNames) do
-        if name:find(npc) then
-            return true
-        end
-    end
-    return false
-end
+local guiCreated = false
 
 -- ========================================
 -- FUNÇÃO PARA ENCONTRAR PETS
@@ -79,10 +61,15 @@ local function FindAllPets()
             if obj == Character then continue end
             if obj == Player.Character then continue end
             if Players:GetPlayerFromCharacter(obj) then continue end
-            if IsNPC(obj) then continue end
             
             local name = obj.Name:lower()
             if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
+                continue
+            end
+            if name:find("npc") or name:find("humano") or name:find("personagem") then
+                continue
+            end
+            if name:find("coruja") or name:find("owl") then
                 continue
             end
             
@@ -107,136 +94,6 @@ local function FindAllPets()
     
     return pets
 end
-
--- ========================================
--- FUNÇÃO PARA EQUIPAR O LAÇO
--- ========================================
-local function EquipLasso()
-    -- Procura o laço no inventário (Backpack)
-    local backpack = Player:FindFirstChild("Backpack")
-    if backpack then
-        for _, item in pairs(backpack:GetChildren()) do
-            if item:IsA("Tool") then
-                local name = item.Name:lower()
-                if name:find("laço") or name:find("lasso") or name:find("corda") or name:find("capture") then
-                    if Humanoid then
-                        Humanoid:EquipTool(item)
-                        print("🎯 Laço equipado!")
-                        task.wait(0.15)
-                        return true
-                    end
-                end
-            end
-        end
-    end
-    
-    -- Se não achou, tenta a tecla 1
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-        print("🎯 Tecla 1 pressionada!")
-        return true
-    end)
-    
-    return false
-end
-
--- ========================================
--- FUNÇÃO PARA ATIVAR O LAÇO
--- ========================================
-local function ActivateLasso()
-    -- Tenta ativar via tool
-    pcall(function()
-        local tool = Humanoid and Humanoid:FindFirstChild("ActiveTool")
-        if tool then
-            tool:Activate()
-            print("🎯 Laço ativado!")
-            task.wait(0.1)
-            return true
-        end
-    end)
-    
-    return true
-end
-
--- ========================================
--- FUNÇÃO PARA LANÇAR O LAÇO NO PET
--- ========================================
-local function ThrowLasso(pet)
-    if not pet then return false end
-    local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
-    
-    -- 1. Equipa o laço
-    EquipLasso()
-    task.wait(0.2)
-    
-    -- 2. Ativa o laço
-    ActivateLasso()
-    task.wait(0.2)
-    
-    -- 3. Tenta lançar via Remote
-    local remote = ReplicatedStorage:FindFirstChild("CapturePet")
-        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Capture")
-        or ReplicatedStorage:FindFirstChild("Events"):FindFirstChild("Capture")
-        or ReplicatedStorage:FindFirstChild("RemoteEvent")
-    
-    if remote then
-        pcall(function() 
-            remote:FireServer(pet)
-            print("📡 Laço lançado via Remote!")
-            task.wait(0.5)
-            return true
-        end)
-    end
-    
-    -- 4. Fallback: clicar no pet
-    local camera = workspace.CurrentCamera
-    if not camera then return false end
-    
-    local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-    if not onScreen then return false end
-    
-    pcall(function()
-        local mouse = Player:GetMouse()
-        if mouse then
-            mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
-            task.wait(0.1)
-            mouse.Button1Click()
-            print("🎯 Laço lançado no pet: " .. pet.Name)
-            task.wait(0.5)
-            return true
-        end
-    end)
-    
-    return true
-}
-
--- ========================================
--- FUNÇÃO PARA CLICAR RÁPIDO (ENCHE A BARRA)
--- ========================================
-local function RapidClick()
-    print("🖱️ Iniciando cliques rápidos...")
-    
-    -- Clica várias vezes rapidamente
-    for i = 1, Settings.AutoCapture.TotalClicks do
-        pcall(function()
-            -- Clique do mouse
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-            task.wait(Settings.AutoCapture.ClickSpeed)
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-            
-            -- Mostra progresso a cada 10 cliques
-            if i % 10 == 0 then
-                print("🖱️ Cliques: " .. i .. "/" .. Settings.AutoCapture.TotalClicks)
-            end
-        end)
-    end
-    
-    print("✅ Cliques concluídos!")
-    return true
-}
 
 -- ========================================
 -- TELEPORTE SUAVE
@@ -266,7 +123,127 @@ local function SmoothTeleport(targetPos)
 end
 
 -- ========================================
--- CAPTURAR PET (COMPLETO)
+-- FUNÇÃO PARA EQUIPAR O LAÇO
+-- ========================================
+local function EquipLasso()
+    local backpack = Player:FindFirstChild("Backpack")
+    if backpack then
+        for _, item in pairs(backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                local name = item.Name:lower()
+                if name:find("laço") or name:find("lasso") or name:find("corda") or name:find("capture") then
+                    if Humanoid then
+                        Humanoid:EquipTool(item)
+                        print("🎯 Laço equipado!")
+                        task.wait(0.15)
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+        task.wait(0.1)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+        print("🎯 Tecla 1 pressionada!")
+        return true
+    end)
+    
+    return false
+end
+
+-- ========================================
+-- FUNÇÃO PARA ATIVAR O LAÇO
+-- ========================================
+local function ActivateLasso()
+    pcall(function()
+        local tool = Humanoid and Humanoid:FindFirstChild("ActiveTool")
+        if tool then
+            tool:Activate()
+            print("🎯 Laço ativado!")
+            task.wait(0.1)
+            return true
+        end
+    end)
+    
+    return true
+end
+
+-- ========================================
+-- FUNÇÃO PARA LANÇAR O LAÇO
+-- ========================================
+local function ThrowLasso(pet)
+    if not pet then return false end
+    local hrp = pet:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    EquipLasso()
+    task.wait(0.2)
+    
+    ActivateLasso()
+    task.wait(0.2)
+    
+    local remote = ReplicatedStorage:FindFirstChild("CapturePet")
+        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Capture")
+        or ReplicatedStorage:FindFirstChild("Events"):FindFirstChild("Capture")
+        or ReplicatedStorage:FindFirstChild("RemoteEvent")
+    
+    if remote then
+        pcall(function() 
+            remote:FireServer(pet)
+            print("📡 Laço lançado via Remote!")
+            task.wait(0.5)
+            return true
+        end)
+    end
+    
+    local camera = workspace.CurrentCamera
+    if not camera then return false end
+    
+    local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+    if not onScreen then return false end
+    
+    pcall(function()
+        local mouse = Player:GetMouse()
+        if mouse then
+            mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
+            task.wait(0.1)
+            mouse.Button1Click()
+            print("🎯 Laço lançado no pet: " .. pet.Name)
+            task.wait(0.5)
+            return true
+        end
+    end)
+    
+    return true
+}
+
+-- ========================================
+-- FUNÇÃO PARA CLICAR RÁPIDO
+-- ========================================
+local function RapidClick()
+    print("🖱️ Iniciando cliques rápidos...")
+    
+    for i = 1, Settings.AutoCapture.TotalClicks do
+        pcall(function()
+            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+            task.wait(Settings.AutoCapture.ClickSpeed)
+            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+            
+            if i % 10 == 0 then
+                print("🖱️ Cliques: " .. i .. "/" .. Settings.AutoCapture.TotalClicks)
+            end
+        end)
+    end
+    
+    print("✅ Cliques concluídos!")
+    return true
+end
+
+-- ========================================
+-- CAPTURAR PET
 -- ========================================
 local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
@@ -283,12 +260,10 @@ local function CapturePet(pet)
     
     print("🎯 Capturando: " .. pet.Name)
     
-    -- 1. Teleporta até o pet
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     SmoothTeleport(targetPos)
     task.wait(0.3)
     
-    -- 2. Lança o laço no pet
     local success = ThrowLasso(pet)
     if not success then
         isProcessing = false
@@ -297,7 +272,6 @@ local function CapturePet(pet)
     
     task.wait(0.5)
     
-    -- 3. CLICA RÁPIDO PARA ENCHER A BARRA!
     print("🔄 Enchendo a barra de captura...")
     RapidClick()
     
@@ -525,23 +499,46 @@ local function StartMonitoring()
 end
 
 -- ========================================
--- MENU
+-- CRIAR MENU (CORRIGIDO)
 -- ========================================
 local function CreateMenu()
+    if guiCreated then return end
+    
+    print("🎨 Criando menu...")
+    
+    -- Tenta criar em CoreGui
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SixSevenGUI"
-    screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
+    
+    -- Tenta parent diferentes
+    local success = pcall(function()
+        screenGui.Parent = CoreGui
+    end)
+    
+    if not success then
+        pcall(function()
+            screenGui.Parent = Player:WaitForChild("PlayerGui")
+        end)
+    end
+    
+    if not screenGui.Parent then
+        print("❌ Não foi possível criar a GUI!")
+        return nil
+    end
+    
+    print("✅ GUI criada em: " .. screenGui.Parent.Name)
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 320, 0, 300)
-    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -150)
+    mainFrame.Size = UDim2.new(0, 320, 0, 320)
+    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -160)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
     mainFrame.Draggable = true
+    mainFrame.Visible = true
 
     local corner = Instance.new("UICorner")
     corner.Parent = mainFrame
@@ -673,7 +670,7 @@ local function CreateMenu()
     delayBtn2.Size = UDim2.new(0.34, -5, 0, 25)
     delayBtn2.Position = UDim2.new(0.33, 5, 0, 110)
     delayBtn2.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
-    delayBtn2.Text = "3s"
+    delayBtn2.Text = "5s"
     delayBtn2.TextColor3 = Color3.fromRGB(255, 255, 255)
     delayBtn2.TextSize = 14
     delayBtn2.Font = Enum.Font.GothamBold
@@ -704,8 +701,8 @@ local function CreateMenu()
     end)
 
     delayBtn2.MouseButton1Click:Connect(function()
-        Settings.AutoCapture.Delay = 3.0
-        delayLabel.Text = "⏱️ Delay: 3.0s"
+        Settings.AutoCapture.Delay = 5.0
+        delayLabel.Text = "⏱️ Delay: 5.0s"
     end)
 
     delayBtn3.MouseButton1Click:Connect(function()
@@ -724,7 +721,7 @@ local function CreateMenu()
     statusLabel.TextSize = 13
     statusLabel.Font = Enum.Font.Gotham
 
-    -- Total
+    -- Total capturado
     local totalLabel = Instance.new("TextLabel")
     totalLabel.Parent = content
     totalLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -774,7 +771,13 @@ local function CreateMenu()
         end
     end)
 
-    print("✅ MENU CRIADO!")
+    guiCreated = true
+    print("✅ MENU CRIADO COM SUCESSO!")
+    
+    -- Abre o menu automaticamente
+    mainFrame.Visible = true
+    floatBtn.Visible = false
+    
     return screenGui
 end
 
@@ -782,15 +785,30 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - DECODIFICADO")
+print("  ✧ SIX SEVEN - CLIQUE RÁPIDO")
 print("========================================")
 print("  📖 COMO FUNCIONA:")
 print("  1. Teleporta até o pet")
 print("  2. Lança o laço")
 print("  3. CLICA RÁPIDO para encher a barra!")
+print("  🖱️ " .. Settings.AutoCapture.TotalClicks .. " cliques em " .. Settings.AutoCapture.ClickSpeed .. "s")
 print("========================================")
 
-pcall(CreateMenu)
+-- Tenta criar o menu com retry
+local function TryCreateMenu()
+    local attempts = 0
+    while attempts < 5 and not guiCreated do
+        attempts = attempts + 1
+        print("🔄 Tentando criar menu... (" .. attempts .. "/5)")
+        local gui = CreateMenu()
+        if gui then
+            break
+        end
+        task.wait(1)
+    end
+end
+
+task.spawn(TryCreateMenu)
 StartMonitoring()
 
 Player.CharacterAdded:Connect(function(newChar)
@@ -805,7 +823,9 @@ Player.CharacterAdded:Connect(function(newChar)
 end)
 
 print("========================================")
-print("  ✅ PRONTO!")
-print("  📌 Auto: Teleporta → Laço → CLICA RÁPIDO")
-print("  📌 O script clica automaticamente para encher a barra!")
+print("  ✅ SCRIPT CARREGADO!")
+print("  📌 Se o menu não aparecer, verifique:")
+print("  📌 - O jogo pode bloquear CoreGui")
+print("  📌 - Use: loadstring(game:HttpGet('...'))()")
+print("  📌 - O botão ✧ estará no canto inferior direito")
 print("========================================")
