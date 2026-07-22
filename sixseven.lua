@@ -1,5 +1,5 @@
 --[[
-    SIX SEVEN - COMPLETO (Com Campos Editáveis + Contador 5G FIX)
+    SIX SEVEN - COMPLETO (Com Campos Editáveis + Contador 5s)
     Game: [🍎] Capture e Domestique!
 ]]
 
@@ -22,9 +22,8 @@ local Humanoid = Character and Character:FindFirstChild("Humanoid")
 local Settings = {
     AutoCapture = { 
         Enabled = false, 
-        Delay = 5.0,
-        TeleportDelay = 0.3,
-        MaxPerCycle = 5  -- Máximo de pets por ciclo
+        Delay = 5.0,  -- Delay entre capturas (segundos)
+        TeleportDelay = 0.3
     },
     ESP = {
         Enabled = false,
@@ -46,12 +45,10 @@ local espObjects = {}
 local petPositions = {}
 local menuAberto = true
 
--- Variáveis do contador 5G
-local captureCounter = 0
-local maxCapturesPerCycle = 5
-local waitingForNextCycle = false
-local onCycleComplete = nil  -- Função callback
-local nextBtnRef = nil  -- Referência ao botão próximo
+-- Variáveis do contador
+local countdownValue = 5
+local countdownActive = false
+local countdownLabel = nil  -- Label do contador
 
 -- ========================================
 -- FUNÇÃO PARA ENCONTRAR PETS
@@ -219,41 +216,33 @@ local function BringPetToBase(pet)
 end
 
 -- ========================================
--- LOOP AUTO CAPTURE COM CONTADOR 5G (CORRIGIDO)
+-- MOSTRAR CONTADOR NA TELA
+-- ========================================
+local function ShowCountdown(seconds)
+    if not countdownLabel then return end
+    
+    countdownActive = true
+    countdownLabel.Visible = true
+    
+    for i = seconds, 1, -1 do
+        if not autoCapture or not autoCaptureRunning then
+            countdownActive = false
+            countdownLabel.Visible = false
+            return
+        end
+        countdownLabel.Text = "⏳ " .. i .. "s"
+        task.wait(1)
+    end
+    
+    countdownActive = false
+    countdownLabel.Visible = false
+end
+
+-- ========================================
+-- LOOP AUTO CAPTURE COM CONTADOR 5s
 -- ========================================
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
-        -- Verifica se atingiu o limite do ciclo
-        if captureCounter >= maxCapturesPerCycle then
-            print("🔒 Ciclo de " .. maxCapturesPerCycle .. " capturas completo! Aguardando próximo ciclo...")
-            waitingForNextCycle = true
-            
-            -- Notifica via callback
-            if onCycleComplete then
-                onCycleComplete()
-            end
-            
-            -- Espera até ser liberado
-            while waitingForNextCycle and autoCapture and autoCaptureRunning do
-                task.wait(0.5)
-            end
-            
-            -- Se foi cancelado, sai
-            if not autoCapture or not autoCaptureRunning then
-                break
-            end
-            
-            -- Reseta o contador
-            captureCounter = 0
-            print("🔄 Reiniciando ciclo de capturas...")
-            
-            -- Atualiza botão
-            if nextBtnRef then
-                nextBtnRef.Visible = false
-                nextBtnRef.Text = "⏭️ AGUARDANDO..."
-            end
-        end
-        
         task.spawn(function()
             local pets = FindAllPets()
             local target = nil
@@ -282,12 +271,11 @@ local function AutoCaptureLoop()
                 if success then
                     capturedPets[target] = true
                     BringPetToBase(target)
-                    captureCounter = captureCounter + 1
-                    print("✅ " .. target.Name .. " capturado! (" .. captureCounter .. "/" .. maxCapturesPerCycle .. ")")
+                    print("✅ " .. target.Name .. " capturado!")
                     
-                    -- Atualiza status do botão
-                    if nextBtnRef then
-                        nextBtnRef.Text = "⏳ " .. captureCounter .. "/" .. maxCapturesPerCycle
+                    -- Mostra contador de 5 segundos antes do próximo
+                    if autoCapture and autoCaptureRunning then
+                        ShowCountdown(5)
                     end
                 end
                 task.wait(Settings.AutoCapture.Delay)
@@ -297,22 +285,6 @@ local function AutoCaptureLoop()
         end)
         task.wait(0.1)
     end
-end
-
--- ========================================
--- FUNÇÃO PARA AVANÇAR CICLO (CORRIGIDA)
--- ========================================
-local function AdvanceToNextCycle()
-    if waitingForNextCycle then
-        waitingForNextCycle = false
-        print("▶️ Avançando para próximo ciclo!")
-        if nextBtnRef then
-            nextBtnRef.Visible = false
-            nextBtnRef.Text = "⏳ 0/" .. maxCapturesPerCycle
-        end
-        return true
-    end
-    return false
 end
 
 -- ========================================
@@ -562,8 +534,8 @@ local function CreateMenu()
     -- Frame principal
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 220, 0, 350)  -- Aumentado para caber o novo botão
-    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -175)
+    mainFrame.Size = UDim2.new(0, 220, 0, 300)
+    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -150)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -613,15 +585,15 @@ local function CreateMenu()
     local sep = Instance.new("Frame")
     sep.Parent = mainFrame
     sep.Size = UDim2.new(0.9, 0, 0, 1)
-    sep.Position = UDim2.new(0.05, 0, 0.11, 0)
+    sep.Position = UDim2.new(0.05, 0, 0.13, 0)
     sep.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     sep.BackgroundTransparency = 0.5
 
     -- Container dos botões
     local container = Instance.new("Frame")
     container.Parent = mainFrame
-    container.Size = UDim2.new(0.9, 0, 0.75, 0)
-    container.Position = UDim2.new(0.05, 0, 0.15, 0)
+    container.Size = UDim2.new(0.9, 0, 0.7, 0)
+    container.Position = UDim2.new(0.05, 0, 0.17, 0)
     container.BackgroundTransparency = 1
 
     local layout = Instance.new("UIListLayout")
@@ -699,73 +671,49 @@ local function CreateMenu()
         autoBtn.BackgroundColor3 = autoCapture and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 120)
         if autoCapture then
             if not autoCaptureRunning then
-                captureCounter = 0  -- Reset contador
-                waitingForNextCycle = false
                 autoCaptureRunning = true
-                if nextBtnRef then
-                    nextBtnRef.Visible = false
-                    nextBtnRef.Text = "⏳ 0/" .. maxCapturesPerCycle
-                end
                 task.spawn(AutoCaptureLoop)
             end
         else
             autoCaptureRunning = false
-            waitingForNextCycle = false
-            if nextBtnRef then
-                nextBtnRef.Visible = false
+            countdownActive = false
+            if countdownLabel then
+                countdownLabel.Visible = false
             end
         end
     end)
 
     -- ========================================
-    -- BOTÃO PRÓXIMO (5G) - CORRIGIDO
+    -- CONTADOR NA TELA (grande e centralizado)
     -- ========================================
-    local nextBtn = Instance.new("TextButton")
-    nextBtn.Parent = container
-    nextBtn.Size = UDim2.new(1, 0, 0, 28)
-    nextBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 50)
-    nextBtn.Text = "⏳ 0/5"
-    nextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nextBtn.TextSize = 13
-    nextBtn.Font = Enum.Font.GothamBold
-    nextBtn.BorderSizePixel = 0
-    nextBtn.Visible = false  -- Começa invisível
-    
-    local nextCorner = Instance.new("UICorner")
-    nextCorner.Parent = nextBtn
-    nextCorner.CornerRadius = UDim.new(0, 5)
-    
-    -- Guarda referência global
-    nextBtnRef = nextBtn
+    local countdownFrame = Instance.new("Frame")
+    countdownFrame.Parent = screenGui
+    countdownFrame.Size = UDim2.new(0, 150, 0, 80)
+    countdownFrame.Position = UDim2.new(0.5, -75, 0.5, -40)
+    countdownFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    countdownFrame.BackgroundTransparency = 0.7
+    countdownFrame.BorderSizePixel = 0
+    countdownFrame.Visible = false
+    countdownFrame.ZIndex = 999
 
-    -- Função para atualizar o texto do botão
-    local function UpdateNextButton()
-        if waitingForNextCycle then
-            nextBtn.Visible = true
-            nextBtn.Text = "⏭️ PRÓXIMO (5/5) 🟢"
-            nextBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
-        else
-            nextBtn.Visible = false
-            nextBtn.Text = "⏳ " .. captureCounter .. "/" .. maxCapturesPerCycle
-            nextBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-        end
-    end
+    local countdownCorner = Instance.new("UICorner")
+    countdownCorner.Parent = countdownFrame
+    countdownCorner.CornerRadius = UDim.new(0, 15)
 
-    -- Callback quando ciclo completa
-    onCycleComplete = function()
-        UpdateNextButton()
-    end
+    local countdownStroke = Instance.new("UIStroke")
+    countdownStroke.Parent = countdownFrame
+    countdownStroke.Color = Color3.fromRGB(255, 200, 50)
+    countdownStroke.Thickness = 2
 
-    -- Ação do botão próximo (CORRIGIDA)
-    nextBtn.MouseButton1Click:Connect(function()
-        print("🔄 Botão PRÓXIMO clicado!")
-        if AdvanceToNextCycle() then
-            UpdateNextButton()
-            print("✅ Ciclo avançado com sucesso!")
-        else
-            print("❌ Não foi possível avançar o ciclo")
-        end
-    end)
+    countdownLabel = Instance.new("TextLabel")
+    countdownLabel.Parent = countdownFrame
+    countdownLabel.Size = UDim2.new(1, 0, 1, 0)
+    countdownLabel.BackgroundTransparency = 1
+    countdownLabel.Text = "⏳ 5s"
+    countdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    countdownLabel.TextSize = 40
+    countdownLabel.Font = Enum.Font.GothamBold
+    countdownLabel.TextScaled = true
 
     -- ========================================
     -- STATUS
@@ -817,7 +765,7 @@ local function CreateMenu()
             local count = #FindAllPets()
             local counterText = ""
             if autoCapture then
-                counterText = " | 📊 " .. captureCounter .. "/" .. maxCapturesPerCycle
+                counterText = " | ⏳ " .. (countdownActive and "Contando..." or "Pronto")
             end
             statusLabel.Text = "📊 Pets: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF") .. counterText
         end
@@ -836,7 +784,7 @@ print("========================================")
 print("  📌 Digite o valor no campo")
 print("  📌 Use + e - para ajustar")
 print("  📌 ESP e Auto Capture")
-print("  📌 Contador 5G incluso")
+print("  📌 Contador de 5s entre capturas")
 print("========================================")
 
 pcall(CreateMenu)
