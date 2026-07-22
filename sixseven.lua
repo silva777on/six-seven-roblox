@@ -1,5 +1,5 @@
 --[[
-    SIX SEVEN - COMPLETO (Com Campos Editáveis + Contador 5s)
+    SIX SEVEN - COMPLETO (Com Campos Editáveis + Contador 5s Ajustável)
     Game: [🍎] Capture e Domestique!
 ]]
 
@@ -22,8 +22,9 @@ local Humanoid = Character and Character:FindFirstChild("Humanoid")
 local Settings = {
     AutoCapture = { 
         Enabled = false, 
-        Delay = 5.0,  -- Delay entre capturas (segundos)
-        TeleportDelay = 0.3
+        Delay = 5.0,
+        TeleportDelay = 0.3,
+        CountdownTime = 5  -- Tempo do contador (1-5 segundos)
     },
     ESP = {
         Enabled = false,
@@ -46,7 +47,6 @@ local petPositions = {}
 local menuAberto = true
 
 -- Variáveis do contador
-local countdownValue = 5
 local countdownActive = false
 local countdownLabel = nil  -- Label do contador
 
@@ -239,7 +239,7 @@ local function ShowCountdown(seconds)
 end
 
 -- ========================================
--- LOOP AUTO CAPTURE COM CONTADOR 5s
+-- LOOP AUTO CAPTURE COM CONTADOR AJUSTÁVEL
 -- ========================================
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
@@ -273,9 +273,9 @@ local function AutoCaptureLoop()
                     BringPetToBase(target)
                     print("✅ " .. target.Name .. " capturado!")
                     
-                    -- Mostra contador de 5 segundos antes do próximo
+                    -- Mostra contador com o tempo configurado
                     if autoCapture and autoCaptureRunning then
-                        ShowCountdown(5)
+                        ShowCountdown(Settings.AutoCapture.CountdownTime)
                     end
                 end
                 task.wait(Settings.AutoCapture.Delay)
@@ -420,7 +420,109 @@ local function StartMonitoring()
 end
 
 -- ========================================
--- CRIAR CAMPO EDITÁVEL
+-- CRIAR SELEÇÃO DE TEMPO (1-5 segundos)
+-- ========================================
+local function CreateTimeSelector(parent, labelText, defaultValue, minValue, maxValue, callback)
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 32)
+    frame.BackgroundTransparency = 1
+
+    -- Label
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = labelText
+    label.TextColor3 = Color3.fromRGB(200, 200, 255)
+    label.TextSize = 12
+    label.Font = Enum.Font.GothamBold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Botão -
+    local btnMinus = Instance.new("TextButton")
+    btnMinus.Parent = frame
+    btnMinus.Size = UDim2.new(0, 22, 0, 22)
+    btnMinus.Position = UDim2.new(0.7, 0, 0.5, -11)
+    btnMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    btnMinus.Text = "−"
+    btnMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnMinus.TextSize = 16
+    btnMinus.Font = Enum.Font.GothamBold
+    btnMinus.BorderSizePixel = 0
+    
+    local minusCorner = Instance.new("UICorner")
+    minusCorner.Parent = btnMinus
+    minusCorner.CornerRadius = UDim.new(0, 4)
+
+    -- Campo de texto
+    local textBox = Instance.new("TextBox")
+    textBox.Parent = frame
+    textBox.Size = UDim2.new(0, 30, 0, 22)
+    textBox.Position = UDim2.new(0.82, 0, 0.5, -11)
+    textBox.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
+    textBox.Text = tostring(defaultValue) .. "s"
+    textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textBox.TextSize = 13
+    textBox.Font = Enum.Font.GothamBold
+    textBox.TextXAlignment = Enum.TextXAlignment.Center
+    textBox.BorderSizePixel = 0
+    textBox.ClearTextOnFocus = false
+    
+    local textCorner = Instance.new("UICorner")
+    textCorner.Parent = textBox
+    textCorner.CornerRadius = UDim.new(0, 4)
+
+    -- Botão +
+    local btnPlus = Instance.new("TextButton")
+    btnPlus.Parent = frame
+    btnPlus.Size = UDim2.new(0, 22, 0, 22)
+    btnPlus.Position = UDim2.new(0.92, 0, 0.5, -11)
+    btnPlus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    btnPlus.Text = "+"
+    btnPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnPlus.TextSize = 16
+    btnPlus.Font = Enum.Font.GothamBold
+    btnPlus.BorderSizePixel = 0
+    
+    local plusCorner = Instance.new("UICorner")
+    plusCorner.Parent = btnPlus
+    plusCorner.CornerRadius = UDim.new(0, 4)
+
+    local currentValue = defaultValue
+
+    local function UpdateValue(newValue)
+        newValue = math.round(math.clamp(newValue, minValue, maxValue))
+        currentValue = newValue
+        textBox.Text = tostring(newValue) .. "s"
+        callback(newValue)
+    end
+
+    btnMinus.MouseButton1Click:Connect(function()
+        UpdateValue(currentValue - 0.5)
+    end)
+
+    btnPlus.MouseButton1Click:Connect(function()
+        UpdateValue(currentValue + 0.5)
+    end)
+
+    textBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            local num = tonumber(string.match(textBox.Text, "([%d.]+)"))
+            if num then
+                UpdateValue(num)
+            else
+                textBox.Text = tostring(currentValue) .. "s"
+            end
+        end
+    end)
+
+    return frame
+end
+
+-- ========================================
+-- CRIAR CAMPO EDITÁVEL PADRÃO
 -- ========================================
 local function CreateEditableField(parent, labelText, defaultValue, minValue, maxValue, callback)
     local frame = Instance.new("Frame")
@@ -534,8 +636,8 @@ local function CreateMenu()
     -- Frame principal
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 220, 0, 300)
-    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -150)
+    mainFrame.Size = UDim2.new(0, 220, 0, 350)  -- Aumentado para caber o novo seletor
+    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -175)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -585,15 +687,15 @@ local function CreateMenu()
     local sep = Instance.new("Frame")
     sep.Parent = mainFrame
     sep.Size = UDim2.new(0.9, 0, 0, 1)
-    sep.Position = UDim2.new(0.05, 0, 0.13, 0)
+    sep.Position = UDim2.new(0.05, 0, 0.11, 0)
     sep.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     sep.BackgroundTransparency = 0.5
 
     -- Container dos botões
     local container = Instance.new("Frame")
     container.Parent = mainFrame
-    container.Size = UDim2.new(0.9, 0, 0.7, 0)
-    container.Position = UDim2.new(0.05, 0, 0.17, 0)
+    container.Size = UDim2.new(0.9, 0, 0.75, 0)
+    container.Position = UDim2.new(0.05, 0, 0.15, 0)
     container.BackgroundTransparency = 1
 
     local layout = Instance.new("UIListLayout")
@@ -684,6 +786,14 @@ local function CreateMenu()
     end)
 
     -- ========================================
+    -- SELETOR DE TEMPO (1-5 segundos) NOVO!
+    -- ========================================
+    CreateTimeSelector(container, "⏱️ Tempo entre pets", Settings.AutoCapture.CountdownTime, 1, 5, function(value)
+        Settings.AutoCapture.CountdownTime = value
+        print("⏱️ Tempo ajustado para: " .. value .. "s")
+    end)
+
+    -- ========================================
     -- CONTADOR NA TELA (grande e centralizado)
     -- ========================================
     local countdownFrame = Instance.new("Frame")
@@ -765,7 +875,7 @@ local function CreateMenu()
             local count = #FindAllPets()
             local counterText = ""
             if autoCapture then
-                counterText = " | ⏳ " .. (countdownActive and "Contando..." or "Pronto")
+                counterText = " | ⏱️ " .. Settings.AutoCapture.CountdownTime .. "s"
             end
             statusLabel.Text = "📊 Pets: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF") .. counterText
         end
@@ -784,7 +894,7 @@ print("========================================")
 print("  📌 Digite o valor no campo")
 print("  📌 Use + e - para ajustar")
 print("  📌 ESP e Auto Capture")
-print("  📌 Contador de 5s entre capturas")
+print("  📌 Seletor de tempo: 1s a 5s")
 print("========================================")
 
 pcall(CreateMenu)
@@ -806,6 +916,4 @@ Player.CharacterAdded:Connect(function(newChar)
     end
 end)
 
-print("========================================")
-print("  ✅ PRONTO!")
-print("========================================")
+print("================================
