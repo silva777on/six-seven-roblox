@@ -1,9 +1,9 @@
 --[[
-    Six Seven - Versão Garantida
+    Six Seven - Ultra Simples
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔴 INICIANDO SCRIPT...")
+print("🔄 CARREGANDO SIX SEVEN - ULTRA SIMPLES...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -83,133 +83,7 @@ local function FindAllPets()
 end
 
 -- ========================================
--- TELEPORTE
--- ========================================
-local function TeleportTo(targetPos)
-    if not RootPart then return end
-    pcall(function()
-        RootPart.CFrame = CFrame.new(targetPos)
-    end)
-    task.wait(0.3)
-end
-
--- ========================================
--- EQUIPAR LAÇO
--- ========================================
-local function EquipLasso()
-    local backpack = Player:FindFirstChild("Backpack")
-    if backpack then
-        for _, item in pairs(backpack:GetChildren()) do
-            if item:IsA("Tool") then
-                local name = item.Name:lower()
-                if name:find("laço") or name:find("lasso") or name:find("corda") then
-                    if Humanoid then
-                        Humanoid:EquipTool(item)
-                        print("✅ Laço equipado!")
-                        task.wait(0.2)
-                        return true
-                    end
-                end
-            end
-        end
-    end
-    
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-        print("✅ Tecla 1 pressionada!")
-        return true
-    end)
-    
-    return false
-end
-
--- ========================================
--- ATIVAR LAÇO
--- ========================================
-local function ActivateLasso()
-    pcall(function()
-        local tool = Humanoid and Humanoid:FindFirstChild("ActiveTool")
-        if tool then
-            tool:Activate()
-            print("✅ Laço ativado!")
-            task.wait(0.2)
-            return true
-        end
-    end)
-    return true
-end
-
--- ========================================
--- LANÇAR LAÇO NO PET
--- ========================================
-local function ThrowLasso(pet)
-    if not pet then return false end
-    local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
-    
-    -- Equipa
-    EquipLasso()
-    task.wait(0.2)
-    
-    -- Ativa
-    ActivateLasso()
-    task.wait(0.2)
-    
-    -- Tenta Remote
-    local remote = ReplicatedStorage:FindFirstChild("CapturePet")
-        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Capture")
-    
-    if remote then
-        pcall(function() 
-            remote:FireServer(pet)
-            print("📡 Remote: " .. pet.Name)
-            task.wait(0.5)
-            return true
-        end)
-    end
-    
-    -- Tenta clicar
-    local camera = workspace.CurrentCamera
-    if not camera then return false end
-    
-    local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-    if not onScreen then return false end
-    
-    pcall(function()
-        local mouse = Player:GetMouse()
-        if mouse then
-            mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
-            task.wait(0.1)
-            mouse.Button1Click()
-            print("🖱️ Clique: " .. pet.Name)
-            task.wait(0.5)
-            return true
-        end
-    end)
-    
-    return true
-end
-
--- ========================================
--- CLICAR RÁPIDO (ENCHE A BARRA)
--- ========================================
-local function RapidClick()
-    print("🖱️ Clicando rápido...")
-    for i = 1, 30 do
-        pcall(function()
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-            task.wait(0.03)
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-        end)
-    end
-    print("✅ Cliques concluídos!")
-    return true
-end
-
--- ========================================
--- CAPTURAR PET
+-- FUNÇÃO PARA CAPTURAR (SÓ CLIQUE)
 -- ========================================
 local function CapturePet(pet)
     if not pet or isProcessing or capturedPets[pet] then return false end
@@ -223,25 +97,56 @@ local function CapturePet(pet)
     
     print("🎯 Capturando: " .. pet.Name)
     
-    -- Teleporta
-    local targetPos = hrp.Position + Vector3.new(0, 3, 0)
-    TeleportTo(targetPos)
-    task.wait(0.3)
+    -- Teleporta para o pet
+    if RootPart then
+        local targetPos = hrp.Position + Vector3.new(0, 3, 0)
+        pcall(function()
+            RootPart.CFrame = CFrame.new(targetPos)
+        end)
+        task.wait(0.3)
+    end
     
-    -- Lança laço
-    ThrowLasso(pet)
-    task.wait(0.5)
+    -- Tenta capturar via Remote (o mais confiável)
+    local remote = ReplicatedStorage:FindFirstChild("CapturePet")
+        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Capture")
+        or ReplicatedStorage:FindFirstChild("Events"):FindFirstChild("Capture")
     
-    -- Clica rápido para encher a barra
-    RapidClick()
-    task.wait(1)
+    if remote then
+        pcall(function() 
+            remote:FireServer(pet)
+            print("📡 Remote: " .. pet.Name)
+            task.wait(0.5)
+            isProcessing = false
+            return true
+        end)
+    end
+    
+    -- Fallback: tenta clicar no pet
+    local camera = workspace.CurrentCamera
+    if camera then
+        local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+        if onScreen then
+            pcall(function()
+                local mouse = Player:GetMouse()
+                if mouse then
+                    mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
+                    task.wait(0.1)
+                    mouse.Button1Click()
+                    print("🖱️ Clique: " .. pet.Name)
+                    task.wait(0.5)
+                    isProcessing = false
+                    return true
+                end
+            end)
+        end
+    end
     
     isProcessing = false
-    return true
+    return false
 end
 
 -- ========================================
--- LEVAR À BASE
+-- LEVAR PET À BASE
 -- ========================================
 local function BringPetToBase(pet)
     if not pet then return end
@@ -252,8 +157,10 @@ local function BringPetToBase(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if hrp then
         local basePos = base.Position + Vector3.new(0, 2, 0)
-        TeleportTo(basePos)
-        pcall(function() hrp.CFrame = CFrame.new(basePos) end)
+        pcall(function()
+            RootPart.CFrame = CFrame.new(basePos)
+            hrp.CFrame = CFrame.new(basePos)
+        end)
         task.wait(0.3)
     end
     
@@ -271,7 +178,7 @@ local function BringPetToBase(pet)
 end
 
 -- ========================================
--- LOOP AUTO
+-- LOOP AUTO CAPTURE
 -- ========================================
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
@@ -405,11 +312,9 @@ local function UpdateESP()
 end
 
 -- ========================================
--- CRIAR MENU (SIMPLES)
+-- MENU SIMPLES
 -- ========================================
 local function CreateMenu()
-    print("🔄 Criando menu...")
-    
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SixSevenGUI"
     screenGui.Parent = CoreGui
@@ -417,8 +322,8 @@ local function CreateMenu()
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 280, 0, 220)
-    mainFrame.Position = UDim2.new(0.5, -140, 0.5, -110)
+    mainFrame.Size = UDim2.new(0, 280, 0, 200)
+    mainFrame.Position = UDim2.new(0.5, -140, 0.5, -100)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
@@ -523,17 +428,6 @@ local function CreateMenu()
     statusLabel.TextSize = 13
     statusLabel.Font = Enum.Font.Gotham
 
-    -- Total
-    local totalLabel = Instance.new("TextLabel")
-    totalLabel.Parent = content
-    totalLabel.Size = UDim2.new(1, 0, 0, 25)
-    totalLabel.Position = UDim2.new(0, 0, 0, 135)
-    totalLabel.BackgroundTransparency = 1
-    totalLabel.Text = "🏆 0"
-    totalLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-    totalLabel.TextSize = 13
-    totalLabel.Font = Enum.Font.Gotham
-
     -- Float
     local floatBtn = Instance.new("TextButton")
     floatBtn.Parent = screenGui
@@ -565,28 +459,15 @@ local function CreateMenu()
             task.wait(2)
             local count = #FindAllPets()
             statusLabel.Text = "📊 Pets: " .. count
-            totalLabel.Text = "🏆 " .. totalCaptured
         end
     end)
 
-    print("✅ MENU CRIADO!")
     return screenGui
 end
 
 -- ========================================
--- INICIALIZAÇÃO
+-- MONITORAMENTO
 -- ========================================
-print("========================================")
-print("  ✧ SIX SEVEN - SIMPLES")
-print("========================================")
-
-local success, err = pcall(CreateMenu)
-if success then
-    print("✅ Menu criado com sucesso!")
-else
-    print("❌ Erro: " .. tostring(err))
-end
-
 task.spawn(function()
     while true do
         task.wait(0.5)
@@ -595,6 +476,26 @@ task.spawn(function()
         end
     end
 end)
+
+workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+        if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
+            local name = obj.Name:lower()
+            if not name:find("npc") and not name:find("humano") and not name:find("personagem") then
+                print("🔍 Novo pet: " .. obj.Name)
+            end
+        end
+    end
+end)
+
+-- ========================================
+-- INICIALIZAÇÃO
+-- ========================================
+print("========================================")
+print("  ✧ SIX SEVEN - ULTRA SIMPLES")
+print("========================================")
+
+pcall(CreateMenu)
 
 Player.CharacterAdded:Connect(function(newChar)
     Character = newChar
@@ -605,6 +506,6 @@ end)
 
 print("========================================")
 print("  ✅ PRONTO!")
-print("  📌 Clique em ESP para ligar")
-print("  📌 Clique em Auto para ligar")
+print("  📌 ESP: Liga/Desliga")
+print("  📌 Auto: Teleporta + Tenta capturar")
 print("========================================")
