@@ -1,4 +1,4 @@
--- SIX SEVEN - CAPTURA AUTOMÁTICA COMPLETA (COM BARRINHA)
+-- SIX SEVEN - CAPTURA AUTOMÁTICA COMPLETA
 print("🚀 INICIANDO SIX SEVEN...")
 
 -- ===== SERVIÇOS =====
@@ -27,7 +27,7 @@ local espObjects = {}
 local petPositions = {}
 local estaCapturando = false
 
--- ===== FUNÇÃO PARA ENCONTRAR PETS (SÓ OS QUE SE MOVEM) =====
+-- ===== FUNÇÃO PARA ENCONTRAR PETS =====
 local function FindPets()
     local pets = {}
     for _, obj in pairs(workspace:GetDescendants()) do
@@ -103,7 +103,6 @@ end
 local function EquipLasso()
     print("🔍 Procurando lasso...")
     
-    -- Procura na mochila
     local backpack = Player:FindFirstChild("Backpack")
     local lasso = nil
     
@@ -117,7 +116,6 @@ local function EquipLasso()
         end
     end
     
-    -- Se não achou, procura no Character
     if not lasso and Character then
         for _, item in pairs(Character:GetChildren()) do
             local name = item.Name:lower()
@@ -131,24 +129,21 @@ local function EquipLasso()
     if lasso then
         print("✅ Lasso encontrado: " .. lasso.Name)
         pcall(function()
-            if lasso:IsA("Tool") then
-                -- Se já estiver no Character, não faz nada
-                if lasso.Parent ~= Character then
-                    lasso.Parent = Character
-                end
+            if lasso:IsA("Tool") and lasso.Parent ~= Character then
+                lasso.Parent = Character
                 print("✅ Lasso equipado!")
                 task.wait(0.3)
                 return true
             end
         end)
     else
-        print("⚠️ Lasso não encontrado! Tentando capturar sem ele...")
+        print("⚠️ Lasso não encontrado!")
     end
     
     return false
 end
 
--- ===== FUNÇÃO DE CAPTURA COMPLETA (COM BARRINHA) =====
+-- ===== CAPTURA COMPLETA =====
 local function CapturePet(pet)
     if estaCapturando then return false end
     if not pet then return false end
@@ -161,18 +156,14 @@ local function CapturePet(pet)
     
     local sucesso = false
     
-    -- Tenta capturar com proteção
     pcall(function()
-        -- 1. Equipa o lasso
         EquipLasso()
         task.wait(0.3)
         
-        -- 2. Teleporta para perto do pet
         local targetPos = hrp.Position + Vector3.new(0, 2, 0)
         TeleportTo(targetPos)
         task.wait(0.3)
         
-        -- 3. Joga o lasso no pet (clica nele)
         local mouse = Player:GetMouse()
         if not mouse then return end
         
@@ -180,29 +171,23 @@ local function CapturePet(pet)
         if not cam then return end
         
         local screenPos, onScreen = cam:WorldToViewportPoint(hrp.Position)
-        if not onScreen then
-            print("⚠️ Pet fora da tela!")
-            return
-        end
+        if not onScreen then return end
         
         mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
         task.wait(0.2)
         mouse.Button1Click()
         print("🖱️ Lasso jogado em: " .. pet.Name)
         
-        -- 4. Aguarda o minigame da barrinha aparecer
         task.wait(1.5)
         
-        -- 5. CLICA NA TELA PARA CARREGAR A BARRINHA
         print("🔄 Carregando barrinha...")
         
         local clickCount = 0
-        local maxClicks = 20 -- Número de cliques (ajuste se precisar)
+        local maxClicks = 20
         
         for i = 1, maxClicks do
             if not config.autoOn then break end
             
-            -- Clica no centro da tela
             local viewportSize = cam.ViewportSize
             mouse.Move(Vector2.new(viewportSize.X / 2, viewportSize.Y / 2))
             task.wait(0.05)
@@ -217,10 +202,7 @@ local function CapturePet(pet)
         end
         
         print("✅ Barrinha carregada! (" .. clickCount .. " cliques)")
-        
-        -- 6. Aguarda a captura finalizar
         task.wait(2)
-        
         sucesso = true
     end)
     
@@ -245,7 +227,6 @@ local function BringPetToBase(pet)
         task.wait(0.3)
     end
     
-    -- Tenta soltar o pet na base
     local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet")
         or ReplicatedStorage:FindFirstChild("DropPet")
         or ReplicatedStorage:FindFirstChild("StorePet")
@@ -334,7 +315,7 @@ local function UpdateESP()
     end
 end
 
--- ===== CRIAR MENU COM + E - =====
+-- ===== CRIAR MENU =====
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SixSeven"
@@ -405,7 +386,7 @@ local function CreateMenu()
     layout.Padding = UDim.new(0, 4)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     
-    -- ===== FUNÇÃO PARA CRIAR LINHA COM + E - =====
+    -- ===== SLIDER =====
     local function CreateSlider(labelText, defaultValue, minVal, maxVal, step, callback)
         local frame = Instance.new("Frame")
         frame.Parent = container
@@ -598,16 +579,12 @@ local function CreateMenu()
                     end
                     
                     if target then
-                        -- CAPTURA COMPLETA
                         local ok = CapturePet(target)
                         if ok then
                             config.petsCapturados[target] = true
                             print("✅ " .. target.Name .. " capturado!")
-                            
-                            -- Tenta levar para a base
                             BringPetToBase(target)
                             
-                            -- Mostra contador
                             if countdownLabel then
                                 countdownLabel.Parent.Visible = true
                                 for i = config.countdownTime, 1, -1 do
