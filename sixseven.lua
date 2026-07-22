@@ -1,10 +1,9 @@
 --[[
-    SIX SEVEN - SCRIPT COMPLETO (BASEADO NO VÍDEO)
-    Game: [🍎] Capture e Domestique!
-    Funcionalidades: Auto Catch, Teleport, Auto Place, Auto Collect, Auto Buy
+    SIX SEVEN - SCRIPT INTELIGENTE
+    Descobre automaticamente como capturar
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - COMPLETO...")
+print("🔄 CARREGANDO SCRIPT INTELIGENTE...")
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -17,41 +16,16 @@ local RunService = game:GetService("RunService")
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-local Humanoid = Character and Character:FindFirstChild("Humanoid")
-
--- ========================================
--- CONFIGURAÇÕES
--- ========================================
-local Config = {
-    -- Auto Catch
-    AutoCatch = false,
-    Rarity = "All", -- All, Common, Uncommon, Rare, Epic, Legendary, Mythic
-    TeleportTo = nil,
-    
-    -- Automations
-    AutoCollectCash = false,
-    AutoEnterance = false,
-    AutoBuyEgg = false,
-    AutoBuyFood = false,
-    AutoFeedPets = false,
-    AutoBuyBuildings = false,
-    AutoOptimizePen = false,
-    AutoPlacePets = false,
-    
-    -- Settings
-    Delay = 5.0,
-    TotalClicks = 50,
-    ClickSpeed = 0.02,
-}
 
 -- ========================================
 -- VARIÁVEIS
 -- ========================================
+local autoAtivo = false
 local capturados = {}
-local totalCapturados = 0
+local total = 0
 local processando = false
 local espAtivo = false
-local autoRodando = false
+local modoCaptura = "desconhecido"
 
 -- ========================================
 -- FUNÇÃO PARA ENCONTRAR PETS
@@ -79,7 +53,7 @@ local function EncontrarPets()
 end
 
 -- ========================================
--- FUNÇÕES DE CLIQUE E TECLA
+-- FUNÇÕES DE CLIQUE
 -- ========================================
 local function Clicar()
     pcall(function()
@@ -104,9 +78,10 @@ local function PressionarTecla(tecla)
 end
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR BOTÃO NA UI
+-- FUNÇÃO PARA ENCONTRAR BOTÕES NA UI
 -- ========================================
-local function EncontrarBotao(nome)
+local function EncontrarTodosBotoes()
+    local botoes = {}
     local guis = {CoreGui, Player:FindFirstChild("PlayerGui")}
     
     for _, gui in pairs(guis) do
@@ -114,93 +89,97 @@ local function EncontrarBotao(nome)
             for _, obj in pairs(gui:GetDescendants()) do
                 if obj:IsA("TextButton") or obj:IsA("ImageButton") then
                     if obj.Visible then
-                        local texto = obj.Text and obj.Text:lower() or ""
-                        local nomeObj = obj.Name:lower()
-                        
-                        if texto:find(nome) or nomeObj:find(nome) then
-                            return obj
-                        end
+                        table.insert(botoes, {
+                            objeto = obj,
+                            nome = obj.Name,
+                            texto = obj.Text or "",
+                            pos = obj.AbsolutePosition,
+                            size = obj.AbsoluteSize
+                        })
                     end
                 end
             end
         end
     end
-    return nil
+    return botoes
 end
 
 -- ========================================
--- FUNÇÃO PARA CLICAR EM BOTÃO
+-- FUNÇÃO PARA CLICAR EM BOTÃO POR TEXTO
 -- ========================================
-local function ClicarBotao(botao)
-    if not botao then return false end
-    
-    pcall(function()
-        botao:FireServer()
-        return true
-    end)
-    
-    pcall(function()
-        botao:Click()
-        return true
-    end)
-    
-    local absPos = botao.AbsolutePosition
-    local absSize = botao.AbsoluteSize
-    
-    if absPos and absSize and absSize.X > 0 then
-        local x = absPos.X + absSize.X / 2
-        local y = absPos.Y + absSize.Y / 2
-        
-        pcall(function()
-            MoverMouse(x, y)
-            task.wait(0.1)
-            Clicar()
+local function ClicarBotaoPorTexto(texto)
+    local botoes = EncontrarTodosBotoes()
+    for _, btn in pairs(botoes) do
+        if btn.texto:lower():find(texto:lower()) or btn.nome:lower():find(texto:lower()) then
+            pcall(function()
+                btn.objeto:FireServer()
+                return true
+            end)
+            pcall(function()
+                btn.objeto:Click()
+                return true
+            end)
+            
+            if btn.pos and btn.size then
+                local x = btn.pos.X + btn.size.X / 2
+                local y = btn.pos.Y + btn.size.Y / 2
+                pcall(function()
+                    MoverMouse(x, y)
+                    task.wait(0.1)
+                    Clicar()
+                    return true
+                end)
+            end
             return true
-        end)
+        end
     end
-    
     return false
 end
 
 -- ========================================
--- TELEPORTE PARA ÁREAS
+-- DESCOBRIR MODO DE CAPTURA
 -- ========================================
-local function TeleportarPara(destino)
-    print("🚀 Teleportando para: " .. destino)
-    status.Text = "🚀 Teleportando..."
+local function DescobrirModoCaptura()
+    print("🔍 Descobrindo modo de captura...")
     
-    local areas = {
-        ["Main"] = "Main",
-        ["Cave"] = "Cave",
-        ["Island"] = "Island",
-    }
+    -- Verifica se tem ProximityPrompt
+    local pets = EncontrarPets()
+    if #pets > 0 then
+        local pet = pets[1]
+        local prompt = pet:FindFirstChild("ProximityPrompt")
+        if prompt then
+            print("✅ Modo de captura: PROXIMITY PROMPT (tecla E)")
+            return "prompt"
+        end
+    end
     
-    -- Tenta encontrar o destino no workspace
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("Part") or obj:IsA("Model") then
+    -- Verifica se tem Remote Events de captura
+    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
             local nome = obj.Name:lower()
-            if nome:find(destino:lower()) or nome:find("spawn") or nome:find("teleport") then
-                if obj:IsA("Part") and obj.Position then
-                    pcall(function()
-                        RootPart.CFrame = CFrame.new(obj.Position + Vector3.new(0, 2, 0))
-                    end)
-                    task.wait(0.3)
-                    print("✅ Teleportado para: " .. obj.Name)
-                    return true
-                end
+            if nome:find("capture") or nome:find("pet") or nome:find("catch") then
+                print("✅ Modo de captura: REMOTE EVENT (" .. obj.Name .. ")")
+                return "remote"
             end
         end
     end
     
-    -- Fallback: teleporta para o centro do mapa
-    pcall(function()
-        RootPart.CFrame = CFrame.new(0, 10, 0)
-    end)
-    return true
+    -- Verifica botões na UI
+    local botoes = EncontrarTodosBotoes()
+    for _, btn in pairs(botoes) do
+        local texto = btn.texto:lower()
+        if texto:find("capture") or texto:find("catch") or texto:find("pegar") or texto:find("farm") then
+            print("✅ Modo de captura: UI BUTTON (" .. btn.texto .. ")")
+            return "ui"
+        end
+    end
+    
+    print("⚠️ Modo de captura: CLICK (padrão)")
+    return "click"
 end
 
 -- ========================================
--- AUTO CATCH (CAPTURA AUTOMÁTICA)
+-- CAPTURAR PET (AUTOMÁTICO)
 -- ========================================
 local function CapturarPet(pet)
     if processando then return false end
@@ -222,36 +201,68 @@ local function CapturarPet(pet)
         task.wait(0.3)
     end
     
-    -- Interage (tecla E)
-    PressionarTecla(Enum.KeyCode.E)
-    task.wait(0.3)
-    
-    -- Clica no pet
     local camera = Workspace.CurrentCamera
-    if camera then
-        local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-        if onScreen then
-            MoverMouse(pos.X, pos.Y)
-            task.wait(0.1)
-            Clicar()
-            task.wait(0.3)
+    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+    
+    -- MODO 1: PROXIMITY PROMPT
+    if modoCaptura == "prompt" then
+        print("📌 Usando Proximity Prompt...")
+        local prompt = pet:FindFirstChild("ProximityPrompt")
+        if prompt then
+            pcall(function()
+                prompt:InputHoldBegin(Player)
+                task.wait(0.3)
+                prompt:InputHoldEnd(Player)
+                print("✅ Prompt ativado")
+            end)
         end
     end
     
-    -- Clica em "Place in Pen" ou "Farm Pet"
-    local botao = EncontrarBotao("place") or EncontrarBotao("pen") or EncontrarBotao("farm") or EncontrarBotao("capture")
-    if botao then
-        ClicarBotao(botao)
+    -- MODO 2: REMOTE EVENT
+    if modoCaptura == "remote" then
+        print("📌 Usando Remote Event...")
+        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("RemoteEvent") then
+                local nome = obj.Name:lower()
+                if nome:find("capture") or nome:find("pet") or nome:find("catch") then
+                    pcall(function()
+                        obj:FireServer("Capture", pet.Name, pet)
+                        print("✅ Remote enviado: " .. obj.Name)
+                    end)
+                end
+            end
+        end
+    end
+    
+    -- MODO 3: UI BUTTON
+    if modoCaptura == "ui" then
+        print("📌 Usando UI Button...")
+        local textos = {"capture", "catch", "pegar", "farm", "pet", "place"}
+        for _, texto in pairs(textos) do
+            if ClicarBotaoPorTexto(texto) then
+                print("✅ Botão clicado: " .. texto)
+                break
+            end
+        end
+    end
+    
+    -- MODO 4: CLICK (padrão)
+    print("📌 Usando Click...")
+    if onScreen then
+        MoverMouse(pos.X, pos.Y)
+        task.wait(0.1)
+        Clicar()
         task.wait(0.3)
     end
     
-    -- Clica repetidamente
-    for i = 1, Config.TotalClicks do
+    -- Clica repetidamente para encher a barra
+    print("🖱️ Enchendo barra...")
+    for i = 1, 50 do
         Clicar()
         if i % 10 == 0 then
-            print("  📊 " .. i .. "/" .. Config.TotalClicks)
+            print("  📊 " .. i .. "/50")
         end
-        task.wait(Config.ClickSpeed)
+        task.wait(0.02)
     end
     
     task.wait(0.5)
@@ -262,7 +273,7 @@ local function CapturarPet(pet)
         for _, p in pairs(pasta:GetChildren()) do
             if p.Name == pet.Name then
                 capturados[pet] = true
-                totalCapturados = totalCapturados + 1
+                total = total + 1
                 processando = false
                 print("✅ CAPTUROU: " .. pet.Name)
                 status.Text = "✅ Capturou: " .. pet.Name
@@ -273,7 +284,7 @@ local function CapturarPet(pet)
     
     if not pet.Parent then
         capturados[pet] = true
-        totalCapturados = totalCapturados + 1
+        total = total + 1
         processando = false
         print("✅ CAPTUROU: " .. pet.Name)
         status.Text = "✅ Capturou: " .. pet.Name
@@ -287,204 +298,37 @@ local function CapturarPet(pet)
 end
 
 -- ========================================
--- AUTO PLACE PETS (COLOCAR PETS NO RECINTO)
--- ========================================
-local function AutoPlacePets()
-    print("🏠 Auto Place Pets...")
-    status.Text = "🏠 Colocando pets..."
-    
-    -- Procura botão "Place in Pen"
-    local botao = EncontrarBotao("place") or EncontrarBotao("pen")
-    if botao then
-        ClicarBotao(botao)
-        task.wait(0.5)
-    end
-    
-    -- Tenta clicar nos pets para colocar
-    for _, pet in pairs(capturados) do
-        if pet and pet:IsA("Model") then
-            local hrp = pet:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local camera = Workspace.CurrentCamera
-                if camera then
-                    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-                    if onScreen then
-                        MoverMouse(pos.X, pos.Y)
-                        task.wait(0.1)
-                        Clicar()
-                        task.wait(0.2)
-                    end
-                end
-            end
-        end
-    end
-end
-
--- ========================================
--- AUTO COLLECT CASH (COLETAR DINHEIRO)
--- ========================================
-local function AutoCollectCash()
-    print("💰 Auto Collect Cash...")
-    status.Text = "💰 Coletando dinheiro..."
-    
-    -- Procura botões de coleta
-    local botoes = {
-        EncontrarBotao("collect"),
-        EncontrarBotao("cash"),
-        EncontrarBotao("money"),
-        EncontrarBotao("claim")
-    }
-    
-    for _, botao in pairs(botoes) do
-        if botao then
-            ClicarBotao(botao)
-            task.wait(0.3)
-        end
-    end
-    
-    -- Tenta tecla para coletar
-    PressionarTecla(Enum.KeyCode.Q)
-    task.wait(0.3)
-end
-
--- ========================================
--- AUTO BUY EGG (COMPRAR OVOS)
--- ========================================
-local function AutoBuyEgg()
-    print("🥚 Auto Buy Egg...")
-    status.Text = "🥚 Comprando ovos..."
-    
-    local botao = EncontrarBotao("egg") or EncontrarBotao("buy")
-    if botao then
-        ClicarBotao(botao)
-        task.wait(0.5)
-    end
-end
-
--- ========================================
--- AUTO BUY FOOD (COMPRAR COMIDA)
--- ========================================
-local function AutoBuyFood()
-    print("🍖 Auto Buy Food...")
-    status.Text = "🍖 Comprando comida..."
-    
-    local botao = EncontrarBotao("food") or EncontrarBotao("buy") or EncontrarBotao("shop")
-    if botao then
-        ClicarBotao(botao)
-        task.wait(0.5)
-    end
-end
-
--- ========================================
--- AUTO FEED PETS (ALIMENTAR PETS)
--- ========================================
-local function AutoFeedPets()
-    print("🍽️ Auto Feed Pets...")
-    status.Text = "🍽️ Alimentando pets..."
-    
-    local botao = EncontrarBotao("feed") or EncontrarBotao("food")
-    if botao then
-        ClicarBotao(botao)
-        task.wait(0.5)
-    end
-end
-
--- ========================================
--- AUTO BUY BUILDINGS (COMPRAR CONSTRUÇÕES)
--- ========================================
-local function AutoBuyBuildings()
-    print("🏗️ Auto Buy Buildings...")
-    status.Text = "🏗️ Comprando construções..."
-    
-    local botao = EncontrarBotao("build") or EncontrarBotao("buy") or EncontrarBotao("shop")
-    if botao then
-        ClicarBotao(botao)
-        task.wait(0.5)
-    end
-end
-
--- ========================================
--- AUTO OPTIMIZE PEN (OTIMIZAR RECINTO)
--- ========================================
-local function AutoOptimizePen()
-    print("📐 Auto Optimize Pen...")
-    status.Text = "📐 Otimizando recinto..."
-    
-    local botao = EncontrarBotao("optimize") or EncontrarBotao("upgrade") or EncontrarBotao("pen")
-    if botao then
-        ClicarBotao(botao)
-        task.wait(0.5)
-    end
-end
-
--- ========================================
--- LOOP AUTO COMPLETO
+-- LOOP AUTO
 -- ========================================
 local function LoopAuto()
-    while autoRodando do
+    while autoAtivo do
         if processando then
             task.wait(0.5)
         else
-            -- 1. Auto Collect Cash
-            if Config.AutoCollectCash then
-                AutoCollectCash()
-            end
+            local pets = EncontrarPets()
+            local alvo = nil
+            local distMin = math.huge
             
-            -- 2. Auto Buy Egg
-            if Config.AutoBuyEgg then
-                AutoBuyEgg()
-            end
-            
-            -- 3. Auto Buy Food
-            if Config.AutoBuyFood then
-                AutoBuyFood()
-            end
-            
-            -- 4. Auto Feed Pets
-            if Config.AutoFeedPets then
-                AutoFeedPets()
-            end
-            
-            -- 5. Auto Buy Buildings
-            if Config.AutoBuyBuildings then
-                AutoBuyBuildings()
-            end
-            
-            -- 6. Auto Optimize Pen
-            if Config.AutoOptimizePen then
-                AutoOptimizePen()
-            end
-            
-            -- 7. Auto Place Pets
-            if Config.AutoPlacePets then
-                AutoPlacePets()
-            end
-            
-            -- 8. Auto Catch
-            if Config.AutoCatch then
-                local pets = EncontrarPets()
-                local alvo = nil
-                local distMin = math.huge
-                
-                for _, pet in pairs(pets) do
-                    if not capturados[pet] then
-                        local hrp = pet:FindFirstChild("HumanoidRootPart")
-                        if hrp and RootPart then
-                            local dist = (RootPart.Position - hrp.Position).Magnitude
-                            if dist < distMin then
-                                distMin = dist
-                                alvo = pet
-                            end
+            for _, pet in pairs(pets) do
+                if not capturados[pet] then
+                    local hrp = pet:FindFirstChild("HumanoidRootPart")
+                    if hrp and RootPart then
+                        local dist = (RootPart.Position - hrp.Position).Magnitude
+                        if dist < distMin then
+                            distMin = dist
+                            alvo = pet
                         end
                     end
                 end
-                
-                if alvo then
-                    CapturarPet(alvo)
-                end
             end
             
-            task.wait(Config.Delay)
+            if alvo then
+                CapturarPet(alvo)
+                task.wait(5)
+            else
+                status.Text = "⏳ Procurando pets..."
+                task.wait(1)
+            end
         end
     end
 end
@@ -524,7 +368,7 @@ local function AtualizarESP()
 end
 
 -- ========================================
--- CRIAR MENU COMPLETO
+-- CRIAR MENU
 -- ========================================
 local function CriarMenu()
     local gui = Instance.new("ScreenGui")
@@ -534,8 +378,8 @@ local function CriarMenu()
     
     local frame = Instance.new("Frame")
     frame.Parent = gui
-    frame.Size = UDim2.new(0, 300, 0, 450)
-    frame.Position = UDim2.new(0.5, -150, 0.5, -225)
+    frame.Size = UDim2.new(0, 260, 0, 250)
+    frame.Position = UDim2.new(0.5, -130, 0.5, -125)
     frame.BackgroundColor3 = Color3.fromRGB(10, 10, 30)
     frame.BackgroundTransparency = 0.1
     frame.Active = true
@@ -545,220 +389,87 @@ local function CriarMenu()
     corner.Parent = frame
     corner.CornerRadius = UDim.new(0, 12)
     
-    -- Título
     local titulo = Instance.new("TextLabel")
     titulo.Parent = frame
-    titulo.Size = UDim2.new(1, -40, 0, 35)
-    titulo.Position = UDim2.new(0, 10, 0, 0)
-    titulo.BackgroundTransparency = 1
+    titulo.Size = UDim2.new(1, 0, 0, 35)
+    titulo.BackgroundColor3 = Color3.fromRGB(80, 0, 200)
+    titulo.BackgroundTransparency = 0.3
     titulo.Text = "✧ SIX SEVEN"
-    titulo.TextColor3 = Color3.fromRGB(200, 150, 255)
+    titulo.TextColor3 = Color3.new(1, 1, 1)
     titulo.TextSize = 18
     titulo.Font = Enum.Font.GothamBold
-    titulo.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Minimizar
-    local btnMin = Instance.new("TextButton")
-    btnMin.Parent = frame
-    btnMin.Size = UDim2.new(0, 30, 0, 30)
-    btnMin.Position = UDim2.new(1, -35, 0, 2)
-    btnMin.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    btnMin.Text = "─"
-    btnMin.TextColor3 = Color3.new(1, 1, 1)
-    btnMin.TextSize = 18
-    btnMin.Font = Enum.Font.GothamBold
-    btnMin.BorderSizePixel = 0
+    -- Status do modo
+    local modoLabel = Instance.new("TextLabel")
+    modoLabel.Parent = frame
+    modoLabel.Size = UDim2.new(0.9, 0, 0, 20)
+    modoLabel.Position = UDim2.new(0.05, 0, 0.18, 0)
+    modoLabel.BackgroundTransparency = 1
+    modoLabel.Text = "🔍 Modo: " .. modoCaptura
+    modoLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+    modoLabel.TextSize = 12
+    modoLabel.Font = Enum.Font.Gotham
     
-    local minCorner = Instance.new("UICorner")
-    minCorner.Parent = btnMin
-    minCorner.CornerRadius = UDim.new(0, 6)
+    local btnESP = Instance.new("TextButton")
+    btnESP.Parent = frame
+    btnESP.Size = UDim2.new(0.8, 0, 0, 30)
+    btnESP.Position = UDim2.new(0.1, 0, 0.3, 0)
+    btnESP.BackgroundColor3 = Color3.fromRGB(50, 50, 120)
+    btnESP.Text = "🔴 ESP"
+    btnESP.TextColor3 = Color3.new(1, 1, 1)
+    btnESP.TextSize = 14
+    btnESP.Font = Enum.Font.GothamBold
+    btnESP.BorderSizePixel = 0
     
-    -- Fechar
-    local btnClose = Instance.new("TextButton")
-    btnClose.Parent = frame
-    btnClose.Size = UDim2.new(0, 30, 0, 30)
-    btnClose.Position = UDim2.new(1, -70, 0, 2)
-    btnClose.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-    btnClose.Text = "✕"
-    btnClose.TextColor3 = Color3.new(1, 1, 1)
-    btnClose.TextSize = 14
-    btnClose.Font = Enum.Font.GothamBold
-    btnClose.BorderSizePixel = 0
+    local espCorner = Instance.new("UICorner")
+    espCorner.Parent = btnESP
+    espCorner.CornerRadius = UDim.new(0, 8)
     
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.Parent = btnClose
-    closeCorner.CornerRadius = UDim.new(0, 6)
+    local btnAuto = Instance.new("TextButton")
+    btnAuto.Parent = frame
+    btnAuto.Size = UDim2.new(0.8, 0, 0, 30)
+    btnAuto.Position = UDim2.new(0.1, 0, 0.5, 0)
+    btnAuto.BackgroundColor3 = Color3.fromRGB(50, 50, 120)
+    btnAuto.Text = "🔴 AUTO"
+    btnAuto.TextColor3 = Color3.new(1, 1, 1)
+    btnAuto.TextSize = 14
+    btnAuto.Font = Enum.Font.GothamBold
+    btnAuto.BorderSizePixel = 0
     
-    -- Container
-    local container = Instance.new("ScrollingFrame")
-    container.Parent = frame
-    container.Size = UDim2.new(0.95, 0, 0.8, 0)
-    container.Position = UDim2.new(0.025, 0, 0.1, 0)
-    container.BackgroundTransparency = 1
-    container.CanvasSize = UDim2.new(0, 0, 0, 600)
-    container.ScrollBarThickness = 4
+    local autoCorner = Instance.new("UICorner")
+    autoCorner.Parent = btnAuto
+    autoCorner.CornerRadius = UDim.new(0, 8)
     
-    local layout = Instance.new("UIListLayout")
-    layout.Parent = container
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 5)
+    local btnTeste = Instance.new("TextButton")
+    btnTeste.Parent = frame
+    btnTeste.Size = UDim2.new(0.8, 0, 0, 30)
+    btnTeste.Position = UDim2.new(0.1, 0, 0.7, 0)
+    btnTeste.BackgroundColor3 = Color3.fromRGB(180, 120, 40)
+    btnTeste.Text = "🔍 TESTAR CAPTURA"
+    btnTeste.TextColor3 = Color3.new(1, 1, 1)
+    btnTeste.TextSize = 14
+    btnTeste.Font = Enum.Font.GothamBold
+    btnTeste.BorderSizePixel = 0
     
-    -- Criar botão toggle
-    local function CriarToggle(texto, variavel, callback)
-        local btn = Instance.new("TextButton")
-        btn.Parent = container
-        btn.Size = UDim2.new(1, 0, 0, 30)
-        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 120)
-        btn.Text = "🔴 " .. texto
-        btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.TextSize = 13
-        btn.Font = Enum.Font.GothamBold
-        btn.BorderSizePixel = 0
-        
-        local btnCorner = Instance.new("UICorner")
-        btnCorner.Parent = btn
-        btnCorner.CornerRadius = UDim.new(0, 6)
-        
-        btn.MouseButton1Click:Connect(function()
-            variavel = not variavel
-            btn.Text = variavel and "🟢 " .. texto or "🔴 " .. texto
-            btn.BackgroundColor3 = variavel and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(50, 50, 120)
-            if callback then callback(variavel) end
-        end)
-        
-        return btn
-    end
+    local testeCorner = Instance.new("UICorner")
+    testeCorner.Parent = btnTeste
+    testeCorner.CornerRadius = UDim.new(0, 8)
     
-    -- Criar botão normal
-    local function CriarBotao(texto, callback)
-        local btn = Instance.new("TextButton")
-        btn.Parent = container
-        btn.Size = UDim2.new(1, 0, 0, 30)
-        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 140)
-        btn.Text = texto
-        btn.TextColor3 = Color3.new(1, 1, 1)
-        btn.TextSize = 13
-        btn.Font = Enum.Font.GothamBold
-        btn.BorderSizePixel = 0
-        
-        local btnCorner = Instance.new("UICorner")
-        btnCorner.Parent = btn
-        btnCorner.CornerRadius = UDim.new(0, 6)
-        
-        btn.MouseButton1Click:Connect(callback)
-        return btn
-    end
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Parent = frame
+    statusLabel.Size = UDim2.new(0.9, 0, 0, 20)
+    statusLabel.Position = UDim2.new(0.05, 0, 0.88, 0)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "📊 Pronto"
+    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
+    statusLabel.TextSize = 12
+    statusLabel.Font = Enum.Font.Gotham
     
-    -- Título da seção
-    local function CriarSecao(texto)
-        local label = Instance.new("TextLabel")
-        label.Parent = container
-        label.Size = UDim2.new(1, 0, 0, 25)
-        label.BackgroundTransparency = 1
-        label.Text = "─── " .. texto .. " ───"
-        label.TextColor3 = Color3.fromRGB(200, 150, 255)
-        label.TextSize = 14
-        label.Font = Enum.Font.GothamBold
-    end
-    
-    -- ========================================
-    -- SEÇÃO: AUTO CATCH
-    -- ========================================
-    CriarSecao("AUTO CATCH")
-    
-    local btnAutoCatch = CriarToggle("Auto Catch", Config.AutoCatch, function(val)
-        Config.AutoCatch = val
-        if val then
-            autoRodando = true
-            task.spawn(LoopAuto)
-        else
-            autoRodando = false
-        end
-    end)
-    
-    -- Raridade
-    local function CriarDropdown(texto, opcoes)
-        local dropdown = Instance.new("TextButton")
-        dropdown.Parent = container
-        dropdown.Size = UDim2.new(1, 0, 0, 25)
-        dropdown.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
-        dropdown.Text = "📋 " .. texto .. ": " .. opcoes[1]
-        dropdown.TextColor3 = Color3.new(1, 1, 1)
-        dropdown.TextSize = 12
-        dropdown.Font = Enum.Font.Gotham
-        dropdown.BorderSizePixel = 0
-        
-        local dropdownCorner = Instance.new("UICorner")
-        dropdownCorner.Parent = dropdown
-        dropdownCorner.CornerRadius = UDim.new(0, 6)
-        
-        local selected = 1
-        dropdown.MouseButton1Click:Connect(function()
-            selected = selected % #opcoes + 1
-            dropdown.Text = "📋 " .. texto .. ": " .. opcoes[selected]
-            Config.Rarity = opcoes[selected]
-        end)
-        
-        return dropdown
-    end
-    
-    CriarDropdown("Raridade", {"All", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"})
-    
-    CriarBotao("🚀 Teleport", function()
-        -- Abre opções de teleporte
-        local areas = {"Main", "Cave", "Island", "Forest", "Desert"}
-        for i, area in pairs(areas) do
-            task.spawn(function()
-                TeleportarPara(area)
-                task.wait(0.5)
-            end)
-        end
-    end)
-    
-    -- ========================================
-    -- SEÇÃO: AUTOMATIONS
-    -- ========================================
-    CriarSecao("AUTOMATIONS")
-    
-    CriarToggle("Auto Collect Cash", Config.AutoCollectCash, function(val)
-        Config.AutoCollectCash = val
-    end)
-    
-    CriarToggle("Auto Enterance", Config.AutoEnterance, function(val)
-        Config.AutoEnterance = val
-    end)
-    
-    CriarToggle("Auto Buy Egg", Config.AutoBuyEgg, function(val)
-        Config.AutoBuyEgg = val
-    end)
-    
-    CriarToggle("Auto Buy Food", Config.AutoBuyFood, function(val)
-        Config.AutoBuyFood = val
-    end)
-    
-    CriarToggle("Auto Feed Pets", Config.AutoFeedPets, function(val)
-        Config.AutoFeedPets = val
-    end)
-    
-    CriarToggle("Auto Buy Buildings", Config.AutoBuyBuildings, function(val)
-        Config.AutoBuyBuildings = val
-    end)
-    
-    CriarToggle("Auto Optimize Pen", Config.AutoOptimizePen, function(val)
-        Config.AutoOptimizePen = val
-    end)
-    
-    CriarToggle("Auto Place Pets", Config.AutoPlacePets, function(val)
-        Config.AutoPlacePets = val
-    end)
-    
-    -- ========================================
-    -- SEÇÃO: ESP
-    -- ========================================
-    CriarSecao("ESP")
-    
-    CriarToggle("ESP", espAtivo, function(val)
-        espAtivo = val
+    -- Eventos
+    btnESP.MouseButton1Click:Connect(function()
+        espAtivo = not espAtivo
+        btnESP.Text = espAtivo and "🟢 ESP" or "🔴 ESP"
+        btnESP.BackgroundColor3 = espAtivo and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(50, 50, 120)
         AtualizarESP()
         
         task.spawn(function()
@@ -769,53 +480,26 @@ local function CriarMenu()
         end)
     end)
     
-    -- ========================================
-    -- STATUS
-    -- ========================================
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Parent = frame
-    statusLabel.Size = UDim2.new(0.95, 0, 0, 20)
-    statusLabel.Position = UDim2.new(0.025, 0, 0.92, 0)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "📊 Pronto"
-    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
-    statusLabel.TextSize = 12
-    statusLabel.Font = Enum.Font.Gotham
+    btnAuto.MouseButton1Click:Connect(function()
+        autoAtivo = not autoAtivo
+        btnAuto.Text = autoAtivo and "🟢 AUTO" or "🔴 AUTO"
+        btnAuto.BackgroundColor3 = autoAtivo and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(50, 50, 120)
+        statusLabel.Text = autoAtivo and "🔄 Auto ligado" or "⏹️ Auto desligado"
+        
+        if autoAtivo then
+            task.spawn(LoopAuto)
+        end
+    end)
     
-    -- ========================================
-    -- BOTÃO FLUTUANTE
-    -- ========================================
-    local btnFloat = Instance.new("TextButton")
-    btnFloat.Name = "FloatButton"
-    btnFloat.Parent = gui
-    btnFloat.Size = UDim2.new(0, 45, 0, 45)
-    btnFloat.Position = UDim2.new(0.93, -22, 0.93, -22)
-    btnFloat.BackgroundColor3 = Color3.fromRGB(120, 80, 220)
-    btnFloat.Text = "✧"
-    btnFloat.TextColor3 = Color3.new(1, 1, 1)
-    btnFloat.TextSize = 24
-    btnFloat.Font = Enum.Font.GothamBold
-    btnFloat.BorderSizePixel = 0
-    btnFloat.Visible = false
-    
-    local floatCorner = Instance.new("UICorner")
-    floatCorner.Parent = btnFloat
-    floatCorner.CornerRadius = UDim.new(1, 0)
-    
-    local function Minimizar()
-        frame.Visible = false
-        btnFloat.Visible = true
-    end
-    
-    local function Abrir()
-        frame.Visible = true
-        btnFloat.Visible = false
-    end
-    
-    btnMin.MouseButton1Click:Connect(Minimizar)
-    btnFloat.MouseButton1Click:Connect(Abrir)
-    btnClose.MouseButton1Click:Connect(function()
-        gui:Destroy()
+    btnTeste.MouseButton1Click:Connect(function()
+        print("🔍 TESTANDO CAPTURA...")
+        local pets = EncontrarPets()
+        if #pets > 0 then
+            CapturarPet(pets[1])
+        else
+            print("❌ Nenhum pet encontrado!")
+            statusLabel.Text = "❌ Nenhum pet"
+        end
     end)
     
     -- Monitoramento
@@ -823,7 +507,9 @@ local function CriarMenu()
         while true do
             task.wait(2)
             local count = #EncontrarPets()
-            statusLabel.Text = "📊 Pets: " .. count .. " | Capturados: " .. totalCapturados
+            if not autoAtivo and not processando then
+                statusLabel.Text = "📊 Pets: " .. count .. " | Capturados: " .. total
+            end
         end
     end)
     
@@ -834,20 +520,18 @@ end
 -- INICIAR
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - SCRIPT COMPLETO")
+print("  🔍 SCRIPT INTELIGENTE")
 print("========================================")
-print("  📌 FUNCIONALIDADES:")
-print("  - Auto Catch com seleção de raridade")
-print("  - Teleport para áreas")
-print("  - Auto Collect Cash")
-print("  - Auto Buy Egg/Food")
-print("  - Auto Feed Pets")
-print("  - Auto Buy Buildings")
-print("  - Auto Optimize Pen")
-print("  - Auto Place Pets")
-print("  - ESP")
-print("========================================")
+
+-- Descobre o modo de captura
+modoCaptura = DescobrirModoCaptura()
+print("📌 Modo de captura detectado: " .. modoCaptura)
 
 CriarMenu()
 
-print("✅ SCRIPT COMPLETO CARREGADO!")
+print("========================================")
+print("  ✅ SCRIPT CARREGADO!")
+print("  📌 Modo: " .. modoCaptura)
+print("  📌 Clique em TESTAR CAPTURA")
+print("  📌 Veja o console (F9)")
+print("========================================")
