@@ -1,41 +1,29 @@
 --[[
-    SIX SEVEN - CAPTURA POR UI (FUNCIONAL)
+    SIX SEVEN - CLIQUE AUTOMÁTICO NA TELA
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - CAPTURA UI...")
+print("🔄 CARREGANDO SIX SEVEN - CLIQUE NA TELA...")
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-local Humanoid = Character and Character:FindFirstChild("Humanoid")
-
--- ========================================
--- CONFIGURAÇÕES
--- ========================================
-local Config = {
-    Delay = 5.0,
-    ClickSpeed = 0.02,
-    TotalClicks = 30
-}
 
 -- ========================================
 -- VARIÁVEIS
 -- ========================================
-local espAtivo = false
 local autoAtivo = false
 local autoRodando = false
+local processando = false
 local capturados = {}
 local totalCapturados = 0
-local processando = false
+local espAtivo = false
 
 -- ========================================
 -- FUNÇÃO PARA ENCONTRAR PETS
@@ -63,150 +51,40 @@ local function EncontrarPets()
 end
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR BOTÃO DE CAPTURA NA UI
+-- FUNÇÃO PARA CLICAR NA TELA (EM QUALQUER LUGAR)
 -- ========================================
-local function EncontrarBotaoCaptura()
-    -- Procura em todas as GUIs
-    local guis = {
-        CoreGui,
-        Player:FindFirstChild("PlayerGui"),
-        game:GetService("StarterGui")
-    }
-    
-    for _, gui in pairs(guis) do
-        if gui then
-            for _, obj in pairs(gui:GetDescendants()) do
-                if obj:IsA("TextButton") or obj:IsA("ImageButton") then
-                    local nome = obj.Name:lower()
-                    local texto = obj.Text and obj.Text:lower() or ""
-                    
-                    -- Palavras-chave do botão de captura
-                    if nome:find("capture") or nome:find("catch") or nome:find("pegar") or 
-                       texto:find("capture") or texto:find("catch") or texto:find("pegar") or
-                       texto:find("pegar") or texto:find("agarrar") or texto:find("coletar") then
-                        return obj
-                    end
-                end
-            end
-        end
-    end
-    return nil
+local function ClicarNaTela()
+    pcall(function()
+        -- Clica na posição atual do mouse
+        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+        task.wait(0.02)
+        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+    end)
 end
 
 -- ========================================
--- FUNÇÃO PARA CLICAR NO BOTÃO
+-- FUNÇÃO PARA CLICAR REPETIDAMENTE (ENCHE A BARRA)
 -- ========================================
-local function ClicarBotao(botao)
-    if not botao then return false end
+local function ClicarRepetidamente(vezes)
+    print("🖱️ Clicando " .. vezes .. " vezes na tela...")
     
-    pcall(function()
-        botao:FireServer()
-        print("🔥 Botão clicado via FireServer")
-        return true
-    end)
-    
-    pcall(function()
-        botao:Click()
-        print("🔥 Botão clicado via Click()")
-        return true
-    end)
-    
-    -- Simula clique no botão
-    local absPos = botao.AbsolutePosition
-    local absSize = botao.AbsoluteSize
-    
-    if absPos and absSize then
-        local x = absPos.X + absSize.X / 2
-        local y = absPos.Y + absSize.Y / 2
+    for i = 1, vezes do
+        ClicarNaTela()
         
-        pcall(function()
-            VirtualInputManager:SendMouseMovement(x, y, Enum.VirtualKeyMode.Delta, game)
-            task.wait(0.05)
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-            task.wait(0.02)
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-            print("🔥 Botão clicado via mouse")
-            return true
-        end)
-    end
-    
-    return false
-end
-
--- ========================================
--- FUNÇÃO PARA ENCONTRAR E CLICAR NO BOTÃO CAPTURAR
--- ========================================
-local function ClicarCapturar()
-    print("🔍 Procurando botão de captura...")
-    
-    -- Tenta encontrar o botão
-    local botao = EncontrarBotaoCaptura()
-    if botao then
-        print("✅ Botão encontrado: " .. botao.Name)
-        return ClicarBotao(botao)
-    end
-    
-    -- Se não encontrou, tenta clicar no centro da tela (onde geralmente fica)
-    print("🔍 Botão não encontrado, tentando clique no centro...")
-    pcall(function()
-        local camera = Workspace.CurrentCamera
-        if camera then
-            local viewport = camera.ViewportSize
-            VirtualInputManager:SendMouseMovement(viewport.X/2, viewport.Y/2, Enum.VirtualKeyMode.Delta, game)
-            task.wait(0.05)
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-            task.wait(0.02)
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-            print("🔥 Clique no centro da tela")
-            return true
+        -- Mostra progresso a cada 10 cliques
+        if i % 10 == 0 then
+            print("  📊 Progresso: " .. i .. "/" .. vezes)
         end
-    end)
-    
-    return false
-end
-
--- ========================================
--- FUNÇÃO PARA PRESSIONAR TECLA E (INTERAGIR)
--- ========================================
-local function PressionarTeclaInteracao()
-    print("⌨️ Pressionando tecla E...")
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-        return true
-    end)
-    return true
-end
-
--- ========================================
--- FUNÇÃO PARA CLICAR RÁPIDO (ENCHE A BARRA)
--- ========================================
-local function CliqueRapido()
-    print("🖱️ Iniciando cliques rápidos...")
-    
-    -- Encontra a posição do mouse
-    local posX, posY = UserInputService:GetMouseLocation()
-    
-    for i = 1, Config.TotalClicks do
-        pcall(function()
-            -- Clica onde o mouse está
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-            task.wait(Config.ClickSpeed)
-            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-            
-            if i % 10 == 0 then
-                print("🖱️ Cliques: " .. i .. "/" .. Config.TotalClicks)
-            end
-        end)
+        
+        task.wait(0.02) -- Velocidade dos cliques
     end
     
-    print("✅ Cliques rápidos concluídos!")
+    print("✅ " .. vezes .. " cliques concluídos!")
     return true
 end
 
 -- ========================================
--- FUNÇÃO PRINCIPAL DE CAPTURA (OTIMIZADA)
+-- FUNÇÃO PARA CAPTURAR PET
 -- ========================================
 local function CapturarPet(pet)
     if processando then return false end
@@ -220,7 +98,7 @@ local function CapturarPet(pet)
         return false 
     end
     
-    print("🎯 CAPTURANDO: " .. pet.Name)
+    print("\n🎯 CAPTURANDO: " .. pet.Name)
     status.Text = "🎯 Capturando: " .. pet.Name
     
     -- 1. Teleporta para o pet
@@ -231,19 +109,51 @@ local function CapturarPet(pet)
         task.wait(0.3)
     end
     
-    -- 2. Interage com o pet (tecla E)
-    PressionarTeclaInteracao()
-    task.wait(0.3)
+    -- 2. CLICA NO PET (para abrir a UI de captura)
+    print("🖱️ Clicando no pet para abrir a UI...")
+    local camera = Workspace.CurrentCamera
+    if camera then
+        local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+        if onScreen then
+            pcall(function()
+                -- Move o mouse para o pet
+                VirtualInputManager:SendMouseMovement(pos.X, pos.Y, Enum.VirtualKeyMode.Delta, game)
+                task.wait(0.1)
+                
+                -- Clica no pet
+                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+                print("  ✅ Clique no pet enviado")
+            end)
+        else
+            -- Se o pet não está na tela, teleporta mais perto
+            pcall(function()
+                RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 0))
+            end)
+            task.wait(0.3)
+            
+            -- Tenta clicar novamente
+            local newPos, newOnScreen = camera:WorldToViewportPoint(hrp.Position)
+            if newOnScreen then
+                VirtualInputManager:SendMouseMovement(newPos.X, newPos.Y, Enum.VirtualKeyMode.Delta, game)
+                task.wait(0.1)
+                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+            end
+        end
+    end
     
-    -- 3. Clica no botão de captura da UI
-    ClicarCapturar()
-    task.wait(0.3)
-    
-    -- 4. Clique rápido para encher a barra
-    CliqueRapido()
     task.wait(0.5)
     
-    -- 5. Verifica se capturou
+    -- 3. CLICA REPETIDAMENTE NA TELA (ENCHE A BARRA!)
+    print("🔄 Enchendo a barra de captura...")
+    ClicarRepetidamente(40) -- 40 cliques para encher a barra
+    
+    task.wait(0.5)
+    
+    -- 4. Verifica se capturou
     local pasta = Player:FindFirstChild("Pets")
     if pasta then
         for _, p in pairs(pasta:GetChildren()) do
@@ -258,6 +168,7 @@ local function CapturarPet(pet)
         end
     end
     
+    -- Verifica se o pet foi destruído (capturado)
     if not pet.Parent then
         capturados[pet] = true
         totalCapturados = totalCapturados + 1
@@ -282,23 +193,19 @@ local function LevarPetBase(pet)
     local base = Workspace:FindFirstChild("Base") or Workspace:FindFirstChild("PlayerBase")
     if not base then return end
     
+    if RootPart then
+        pcall(function()
+            RootPart.CFrame = CFrame.new(base.Position + Vector3.new(0, 2, 0))
+        end)
+        task.wait(0.3)
+    end
+    
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if hrp then
         pcall(function()
             hrp.CFrame = CFrame.new(base.Position + Vector3.new(0, 2, 0))
         end)
         task.wait(0.3)
-    end
-    
-    -- Tenta soltar
-    local release = ReplicatedStorage:FindFirstChild("ReleasePet")
-        or ReplicatedStorage:FindFirstChild("DropPet")
-    
-    if release then
-        pcall(function()
-            release:FireServer(pet)
-            print("📦 Pet solto na base")
-        end)
     end
 end
 
@@ -332,10 +239,10 @@ local function LoopAuto()
                 if sucesso then
                     LevarPetBase(alvo)
                 end
-                task.wait(Config.Delay)
+                task.wait(5) -- Delay entre capturas
             else
                 status.Text = "⏳ Procurando pets..."
-                task.wait(0.5)
+                task.wait(1)
             end
         end
     end
@@ -386,8 +293,8 @@ local function CriarMenu()
     
     local frame = Instance.new("Frame")
     frame.Parent = gui
-    frame.Size = UDim2.new(0, 260, 0, 220)
-    frame.Position = UDim2.new(0.5, -130, 0.5, -110)
+    frame.Size = UDim2.new(0, 260, 0, 200)
+    frame.Position = UDim2.new(0.5, -130, 0.5, -100)
     frame.BackgroundColor3 = Color3.fromRGB(10, 10, 30)
     frame.BackgroundTransparency = 0.1
     frame.Active = true
@@ -486,22 +393,6 @@ local function CriarMenu()
     autoCorner.Parent = btnAuto
     autoCorner.CornerRadius = UDim.new(0, 8)
     
-    -- Botão TESTE
-    local btnTeste = Instance.new("TextButton")
-    btnTeste.Name = "BtnTeste"
-    btnTeste.Parent = container
-    btnTeste.Size = UDim2.new(1, 0, 0, 35)
-    btnTeste.BackgroundColor3 = Color3.fromRGB(180, 120, 40)
-    btnTeste.Text = "🔍 TESTAR UI"
-    btnTeste.TextColor3 = Color3.new(1, 1, 1)
-    btnTeste.TextSize = 14
-    btnTeste.Font = Enum.Font.GothamBold
-    btnTeste.BorderSizePixel = 0
-    
-    local testeCorner = Instance.new("UICorner")
-    testeCorner.Parent = btnTeste
-    testeCorner.CornerRadius = UDim.new(0, 8)
-    
     -- Status
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Name = "StatusLabel"
@@ -549,10 +440,10 @@ local function CriarMenu()
         gui:Destroy()
     end)
     
-    return gui, btnESP, btnAuto, btnTeste, statusLabel
+    return gui, btnESP, btnAuto, statusLabel
 end
 
-local gui, btnESP, btnAuto, btnTeste, status = CriarMenu()
+local gui, btnESP, btnAuto, status = CriarMenu()
 
 -- ========================================
 -- EVENTOS DOS BOTÕES
@@ -588,48 +479,6 @@ btnAuto.MouseButton1Click:Connect(function()
     end
 end)
 
--- BOTÃO TESTE (Encontra e mostra botões da UI)
-btnTeste.MouseButton1Click:Connect(function()
-    print("🔍 PROCURANDO BOTÕES NA UI...")
-    status.Text = "🔍 Procurando botões..."
-    
-    local guis = {CoreGui, Player:FindFirstChild("PlayerGui")}
-    local encontrados = 0
-    
-    for _, gui in pairs(guis) do
-        if gui then
-            for _, obj in pairs(gui:GetDescendants()) do
-                if obj:IsA("TextButton") or obj:IsA("ImageButton") then
-                    encontrados = encontrados + 1
-                    print("  - " .. obj:GetFullName())
-                    print("    Texto: " .. (obj.Text or "sem texto"))
-                    print("    Visível: " .. tostring(obj.Visible))
-                    
-                    -- Tenta clicar em cada botão encontrado
-                    if obj.Visible and obj.AbsoluteSize and obj.AbsoluteSize.X > 0 then
-                        pcall(function()
-                            local absPos = obj.AbsolutePosition
-                            local absSize = obj.AbsoluteSize
-                            local x = absPos.X + absSize.X / 2
-                            local y = absPos.Y + absSize.Y / 2
-                            
-                            VirtualInputManager:SendMouseMovement(x, y, Enum.VirtualKeyMode.Delta, game)
-                            task.wait(0.05)
-                            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-                            task.wait(0.02)
-                            VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-                            print("    ✅ Cliquei no botão!")
-                        end)
-                    end
-                end
-            end
-        end
-    end
-    
-    print("✅ Total de botões encontrados: " .. encontrados)
-    status.Text = "✅ " .. encontrados .. " botões encontrados"
-end)
-
 -- ========================================
 -- MONITORAMENTO
 -- ========================================
@@ -646,12 +495,12 @@ end)
 Player.CharacterAdded:Connect(function(newChar)
     Character = newChar
     RootPart = newChar:FindFirstChild("HumanoidRootPart")
-    Humanoid = newChar:FindFirstChild("Humanoid")
     print("🔄 Respawnou!")
 end)
 
 print("========================================")
 print("  ✅ SCRIPT PRONTO!")
-print("  📌 Clique em TESTAR UI para ver os botões")
-print("  📌 Depois ligue o AUTO")
+print("  📌 ESP: Mostra os pets")
+print("  📌 AUTO: Clica no pet → Clica na tela 40x")
+print("  📌 A barra vai encher sozinha!")
 print("========================================")
