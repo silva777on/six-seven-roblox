@@ -1,17 +1,15 @@
 --[[
-    SIX SEVEN - VERSÃO ESTÁVEL (Sem Teleporte)
+    SIX SEVEN - COMPLETO (Com Campos Editáveis)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - ESTÁVEL...")
+print("🔄 CARREGANDO SIX SEVEN - EDITÁVEL...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local Workspace = game:GetService("Workspace")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -46,7 +44,6 @@ local capturedPets = {}
 local espObjects = {}
 local petPositions = {}
 local menuAberto = true
-local statusLabel = nil
 
 -- ========================================
 -- FUNÇÃO PARA ENCONTRAR PETS
@@ -100,14 +97,12 @@ local function AtualizarVelocidade()
     if not Humanoid then return end
     local speed = 16 + (Settings.Speed / 100) * 84
     Humanoid.WalkSpeed = speed
-    print("🏃 Velocidade: " .. math.floor(speed))
 end
 
 local function AtualizarJump()
     if not Humanoid then return end
     local jump = 50 + (Settings.Jump / 100) * 50
     Humanoid.JumpPower = jump
-    print("🦘 Pulo: " .. math.floor(jump))
 end
 
 -- ========================================
@@ -174,7 +169,6 @@ local function CapturePet(pet)
     if not hrp then return false end
     
     print("🎯 Capturando: " .. pet.Name)
-    if statusLabel then statusLabel.Text = "🎯 Capturando: " .. pet.Name end
     
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     SmoothTeleport(targetPos)
@@ -401,6 +395,7 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     frame.Size = UDim2.new(1, 0, 0, 32)
     frame.BackgroundTransparency = 1
 
+    -- Label
     local label = Instance.new("TextLabel")
     label.Parent = frame
     label.Size = UDim2.new(0.35, 0, 1, 0)
@@ -412,6 +407,7 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
 
+    -- Botão -
     local btnMinus = Instance.new("TextButton")
     btnMinus.Parent = frame
     btnMinus.Size = UDim2.new(0, 22, 0, 22)
@@ -427,6 +423,7 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     minusCorner.Parent = btnMinus
     minusCorner.CornerRadius = UDim.new(0, 4)
 
+    -- Campo de texto (editável)
     local textBox = Instance.new("TextBox")
     textBox.Parent = frame
     textBox.Size = UDim2.new(0, 35, 0, 22)
@@ -444,6 +441,7 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     textCorner.Parent = textBox
     textCorner.CornerRadius = UDim.new(0, 4)
 
+    -- Botão +
     local btnPlus = Instance.new("TextButton")
     btnPlus.Parent = frame
     btnPlus.Size = UDim2.new(0, 22, 0, 22)
@@ -491,7 +489,7 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
 end
 
 -- ========================================
--- MENU SIMPLES E ESTÁVEL
+-- MENU COMPLETO
 -- ========================================
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
@@ -500,10 +498,11 @@ local function CreateMenu()
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+    -- Frame principal
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 200, 0, 270)
-    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -135)
+    mainFrame.Size = UDim2.new(0, 220, 0, 290)
+    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -145)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -521,6 +520,7 @@ local function CreateMenu()
     stroke.Thickness = 1
     stroke.Transparency = 0.3
 
+    -- Título
     local title = Instance.new("TextLabel")
     title.Parent = mainFrame
     title.Size = UDim2.new(1, -50, 0, 30)
@@ -532,6 +532,7 @@ local function CreateMenu()
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Left
 
+    -- Fechar
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
     closeBtn.Size = UDim2.new(0, 22, 0, 22)
@@ -555,10 +556,10 @@ local function CreateMenu()
     sep.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     sep.BackgroundTransparency = 0.5
 
-    -- Container
+    -- Container dos botões
     local container = Instance.new("Frame")
     container.Parent = mainFrame
-    container.Size = UDim2.new(0.9, 0, 0.65, 0)
+    container.Size = UDim2.new(0.9, 0, 0.7, 0)
     container.Position = UDim2.new(0.05, 0, 0.17, 0)
     container.BackgroundTransparency = 1
 
@@ -568,7 +569,7 @@ local function CreateMenu()
     layout.SortOrder = Enum.SortOrder.LayoutOrder
 
     -- ========================================
-    -- VELOCIDADE
+    -- CAMPO VELOCIDADE
     -- ========================================
     CreateEditableField(container, "🏃 Velocidade", Settings.Speed, 0, 100, function(value)
         Settings.Speed = value
@@ -576,7 +577,7 @@ local function CreateMenu()
     end)
 
     -- ========================================
-    -- JUMP
+    -- CAMPO JUMP
     -- ========================================
     CreateEditableField(container, "🦘 Pulo", Settings.Jump, 0, 100, function(value)
         Settings.Jump = value
@@ -584,15 +585,15 @@ local function CreateMenu()
     end)
 
     -- ========================================
-    -- ESP
+    -- BOTÃO ESP
     -- ========================================
     local espBtn = Instance.new("TextButton")
     espBtn.Parent = container
-    espBtn.Size = UDim2.new(1, 0, 0, 26)
+    espBtn.Size = UDim2.new(1, 0, 0, 28)
     espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     espBtn.Text = "🔴 ESP: OFF"
     espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    espBtn.TextSize = 12
+    espBtn.TextSize = 13
     espBtn.Font = Enum.Font.GothamBold
     espBtn.BorderSizePixel = 0
     
@@ -615,15 +616,15 @@ local function CreateMenu()
     end)
 
     -- ========================================
-    -- AUTO CAPTURE
+    -- BOTÃO AUTO
     -- ========================================
     local autoBtn = Instance.new("TextButton")
     autoBtn.Parent = container
-    autoBtn.Size = UDim2.new(1, 0, 0, 26)
+    autoBtn.Size = UDim2.new(1, 0, 0, 28)
     autoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     autoBtn.Text = "🔴 AUTO: OFF"
     autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    autoBtn.TextSize = 12
+    autoBtn.TextSize = 13
     autoBtn.Font = Enum.Font.GothamBold
     autoBtn.BorderSizePixel = 0
     
@@ -648,10 +649,10 @@ local function CreateMenu()
     -- ========================================
     -- STATUS
     -- ========================================
-    statusLabel = Instance.new("TextLabel")
+    local statusLabel = Instance.new("TextLabel")
     statusLabel.Parent = mainFrame
     statusLabel.Size = UDim2.new(0.9, 0, 0, 18)
-    statusLabel.Position = UDim2.new(0.05, 0, 0.88, 0)
+    statusLabel.Position = UDim2.new(0.05, 0, 0.9, 0)
     statusLabel.BackgroundTransparency = 1
     statusLabel.Text = "📊 Pronto"
     statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
@@ -705,9 +706,10 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - ESTÁVEL")
+print("  ✧ SIX SEVEN - EDITÁVEL")
 print("========================================")
-print("  📌 Velocidade e Pulo (editável)")
+print("  📌 Digite o valor no campo")
+print("  📌 Use + e - para ajustar")
 print("  📌 ESP e Auto Capture")
 print("========================================")
 
