@@ -1,19 +1,21 @@
 --[[
-    Six Seven - Com Delay de 5s
+    Six Seven - Versão Decodificada
+    Baseado no script ofuscado que você enviou
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - DELAY 5s...")
+print("🔄 CARREGANDO SIX SEVEN - VERSÃO DECODIFICADA...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+local Humanoid = Character and Character:FindFirstChild("Humanoid")
 
 -- ========================================
 -- CONFIGURAÇÕES
@@ -21,8 +23,8 @@ local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
 local Settings = {
     AutoCapture = { 
         Enabled = false, 
-        Delay = 5.0,  -- DELAY PADRÃO DE 5 SEGUNDOS
-        TeleportDelay = 0.3
+        Delay = 3.0,
+        TeleportDelay = 0.2
     },
     ESP = {
         Enabled = false,
@@ -40,51 +42,159 @@ local autoCaptureRunning = false
 local capturedPets = {}
 local espObjects = {}
 local petPositions = {}
-local petList = {}
+local isCapturing = false
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR PETS
+-- LISTA DE NPCS (baseado no script ofuscado)
+-- ========================================
+local npcNames = {
+    "npc", "humano", "personagem", "vendedor", "lojista", 
+    "guarda", "civil", "aldeao", "comerciante", "treinador",
+    "professor", "mestre", "ancião", "mercador", "coruja", "owl",
+    "vaca", "boi", "ovelha", "cabra", "cavalo", "galinha", "pato"
+}
+
+local function IsNPC(obj)
+    if not obj then return false end
+    local name = obj.Name:lower()
+    for _, npc in pairs(npcNames) do
+        if name:find(npc) then
+            return true
+        end
+    end
+    return false
+end
+
+-- ========================================
+-- FUNÇÃO PARA ENCONTRAR PETS (IGUAL AO OFUSCADO)
 -- ========================================
 local function FindAllPets()
     local pets = {}
     
+    -- Procura por modelos com HumanoidRootPart (igual ao ofuscado)
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+            
+            -- Ignora o jogador
             if obj == Character then continue end
             if obj == Player.Character then continue end
             if Players:GetPlayerFromCharacter(obj) then continue end
             
+            -- Ignora NPCs
+            if IsNPC(obj) then continue end
+            
             local name = obj.Name:lower()
+            
+            -- Ignora objetos do cenário
             if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
                 continue
             end
-            if name:find("npc") or name:find("humano") or name:find("personagem") then
-                continue
-            end
-            if name:find("coruja") or name:find("owl") then
+            if name:find("tree") or name:find("rock") or name:find("stone") or name:find("grass") then
                 continue
             end
             
-            local hrp = obj:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                local currentPos = hrp.Position
-                
-                if petPositions[obj] then
-                    local oldPos = petPositions[obj]
-                    local dist = (currentPos - oldPos).Magnitude
-                    if dist > 0.1 then
-                        table.insert(pets, obj)
-                    end
-                else
-                    table.insert(pets, obj)
+            -- Verifica se tem ClickDetector (pets têm)
+            local hasClickDetector = false
+            local hasBillboard = false
+            
+            for _, child in pairs(obj:GetChildren()) do
+                if child:IsA("ClickDetector") then
+                    hasClickDetector = true
                 end
-                
-                petPositions[obj] = currentPos
+                if child:IsA("BillboardGui") then
+                    hasBillboard = true
+                end
+            end
+            
+            -- Se tem ClickDetector ou BillboardGui, é um pet
+            if hasClickDetector or hasBillboard then
+                table.insert(pets, obj)
+                continue
+            end
+            
+            -- Verifica se tem Humanoid (fallback)
+            if obj:FindFirstChild("Humanoid") then
+                table.insert(pets, obj)
             end
         end
     end
     
     return pets
+end
+
+-- ========================================
+-- FUNÇÃO PARA EQUIPAR O LAÇO (SEM TRAVAR)
+-- ========================================
+local function EquipLasso()
+    -- Procura o laço no inventário
+    local backpack = Player:FindFirstChild("Backpack")
+    if backpack then
+        for _, item in pairs(backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                local name = item.Name:lower()
+                if name:find("laço") or name:find("lasso") or name:find("corda") or name:find("capture") then
+                    if Humanoid then
+                        Humanoid:EquipTool(item)
+                        task.wait(0.1)
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- ========================================
+-- FUNÇÃO PARA USAR O LAÇO (IGUAL AO OFUSCADO)
+-- ========================================
+local function UseLasso()
+    -- Tenta equipar
+    EquipLasso()
+    task.wait(0.1)
+    
+    -- Tenta ativar via Remote (igual ao ofuscado)
+    local remote = ReplicatedStorage:FindFirstChild("UseLasso")
+        or ReplicatedStorage:FindFirstChild("Lasso")
+        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("UseLasso")
+    
+    if remote then
+        pcall(function() 
+            remote:FireServer()
+            return true
+        end)
+        return true
+    end
+    
+    return true
+end
+
+-- ========================================
+-- FUNÇÃO PARA CLICAR NO PET (IGUAL AO OFUSCADO)
+-- ========================================
+local function ClickOnPet(pet)
+    if not pet then return false end
+    local hrp = pet:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    local camera = workspace.CurrentCamera
+    if not camera then return false end
+    
+    local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+    if not onScreen then return false end
+    
+    pcall(function()
+        local mouse = Player:GetMouse()
+        if mouse then
+            mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
+            task.wait(0.05)
+            mouse.Button1Click()
+            print("🖱️ Clique em: " .. pet.Name)
+            return true
+        end
+    end)
+    
+    return false
 end
 
 -- ========================================
@@ -111,58 +221,47 @@ local function SmoothTeleport(targetPos)
     pcall(function()
         RootPart.CFrame = CFrame.new(targetPos)
     end)
-    task.wait(0.2)
+    task.wait(0.15)
 end
 
 -- ========================================
--- CLICAR NO PET
--- ========================================
-local function ClickOnPet(pet)
-    if not pet then return false end
-    local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
-    
-    local camera = workspace.CurrentCamera
-    if not camera then return false end
-    
-    local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-    if not onScreen then return false end
-    
-    pcall(function()
-        local mouse = Player:GetMouse()
-        if mouse then
-            mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
-            task.wait(0.1)
-            mouse.Button1Click()
-            print("🖱️ Clique em: " .. pet.Name)
-            return true
-        end
-    end)
-    
-    return false
-end
-
--- ========================================
--- CAPTURAR PET
+-- CAPTURAR PET (IGUAL AO OFUSCADO)
 -- ========================================
 local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
+    if isCapturing then return false end
+    
+    isCapturing = true
+    
     local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
+    if not hrp then 
+        isCapturing = false
+        return false 
+    end
     
     print("🎯 Capturando: " .. pet.Name)
     
+    -- Teleporta suavemente
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     SmoothTeleport(targetPos)
     
-    local success = ClickOnPet(pet)
-    task.wait(1.0)
+    task.wait(0.2)
     
+    -- Usa o laço
+    UseLasso()
+    task.wait(0.2)
+    
+    -- Clica no pet
+    local success = ClickOnPet(pet)
+    
+    task.wait(0.8)
+    
+    isCapturing = false
     return success
 end
 
 -- ========================================
--- LEVAR PET À BASE
+-- LEVAR PET À BASE (IGUAL AO OFUSCADO)
 -- ========================================
 local function BringPetToBase(pet)
     if not pet then return end
@@ -173,31 +272,39 @@ local function BringPetToBase(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if hrp then
         local basePos = base.Position + Vector3.new(0, 2, 0)
-        SmoothTeleport(basePos)
+        
         pcall(function()
             hrp.CFrame = CFrame.new(basePos)
+            RootPart.CFrame = CFrame.new(basePos)
         end)
-        task.wait(0.3)
+        task.wait(0.2)
     end
     
+    -- Tenta soltar (igual ao ofuscado)
     local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet")
         or ReplicatedStorage:FindFirstChild("DropPet")
+        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Release")
     
     if releaseRemote then
         pcall(function() 
             releaseRemote:FireServer(pet) 
             print("📦 Pet solto na base!")
         end)
-        task.wait(0.3)
+        task.wait(0.2)
     end
 end
 
 -- ========================================
--- LOOP AUTO CAPTURE
+-- LOOP DE AUTO CAPTURE
 -- ========================================
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
         task.spawn(function()
+            if isCapturing then 
+                task.wait(0.5)
+                return 
+            end
+            
             local pets = FindAllPets()
             local target = nil
             local minDist = math.huge
@@ -237,7 +344,7 @@ local function AutoCaptureLoop()
 end
 
 -- ========================================
--- SISTEMA ESP
+-- SISTEMA ESP (IGUAL AO OFUSCADO)
 -- ========================================
 local function CreateESP(pet)
     if not pet or not pet:IsA("Model") then return end
@@ -310,7 +417,6 @@ local function UpdateESP()
     end
     
     local pets = FindAllPets()
-    petList = pets
     
     for _, pet in pairs(pets) do
         if pet and pet:IsA("Model") and pet:FindFirstChild("HumanoidRootPart") then
@@ -356,9 +462,8 @@ local function StartMonitoring()
     workspace.DescendantAdded:Connect(function(obj)
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
-                local name = obj.Name:lower()
-                if not name:find("npc") and not name:find("humano") and not name:find("personagem") then
-                    print("🔍 Novo pet: " .. obj.Name)
+                if not IsNPC(obj) then
+                    print("🔍 Novo pet detectado: " .. obj.Name)
                     if espActive then
                         task.wait(0.1)
                         UpdateESP()
@@ -392,7 +497,6 @@ local function CreateMenu()
     corner.Parent = mainFrame
     corner.CornerRadius = UDim.new(0, 12)
 
-    -- Título
     local title = Instance.new("TextLabel")
     title.Parent = mainFrame
     title.Size = UDim2.new(1, 0, 0, 35)
@@ -407,7 +511,6 @@ local function CreateMenu()
     titleCorner.Parent = title
     titleCorner.CornerRadius = UDim.new(0, 12)
 
-    -- Fechar
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
     closeBtn.Size = UDim2.new(0, 25, 0, 25)
@@ -424,14 +527,13 @@ local function CreateMenu()
     closeCorner.Parent = closeBtn
     closeCorner.CornerRadius = UDim.new(1, 0)
 
-    -- Container
     local content = Instance.new("Frame")
     content.Parent = mainFrame
     content.Size = UDim2.new(1, -20, 1, -50)
     content.Position = UDim2.new(0, 10, 0, 40)
     content.BackgroundTransparency = 1
 
-    -- Botão ESP
+    -- ESP
     local espBtn = Instance.new("TextButton")
     espBtn.Parent = content
     espBtn.Size = UDim2.new(1, 0, 0, 40)
@@ -451,7 +553,6 @@ local function CreateMenu()
         espActive = not espActive
         espBtn.Text = espActive and "🟢 ESP: ON" or "🔴 ESP: OFF"
         espBtn.BackgroundColor3 = espActive and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
-        print("ESP:", espActive and "ON" or "OFF")
         if espActive then
             UpdateESP()
         else
@@ -462,7 +563,7 @@ local function CreateMenu()
         end
     end)
 
-    -- Botão Auto Capture
+    -- Auto
     local autoBtn = Instance.new("TextButton")
     autoBtn.Parent = content
     autoBtn.Size = UDim2.new(1, 0, 0, 40)
@@ -482,7 +583,6 @@ local function CreateMenu()
         autoCapture = not autoCapture
         autoBtn.Text = autoCapture and "🟢 Auto: ON" or "🔴 Auto: OFF"
         autoBtn.BackgroundColor3 = autoCapture and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
-        print("Auto Capture:", autoCapture and "ON" or "OFF")
         if autoCapture then
             if not autoCaptureRunning then
                 autoCaptureRunning = true
@@ -493,26 +593,25 @@ local function CreateMenu()
         end
     end)
 
-    -- Delay Label
+    -- Delay
     local delayLabel = Instance.new("TextLabel")
     delayLabel.Parent = content
-    delayLabel.Size = UDim2.new(1, 0, 0, 25)
+    delayLabel.Size = UDim2.new(1, 0, 0, 20)
     delayLabel.Position = UDim2.new(0, 0, 0, 100)
     delayLabel.BackgroundTransparency = 1
     delayLabel.Text = "⏱️ Delay: " .. Settings.AutoCapture.Delay .. "s"
     delayLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
-    delayLabel.TextSize = 14
+    delayLabel.TextSize = 13
     delayLabel.Font = Enum.Font.Gotham
 
-    -- Botões de Delay
     local delayBtn1 = Instance.new("TextButton")
     delayBtn1.Parent = content
-    delayBtn1.Size = UDim2.new(0.33, -5, 0, 30)
-    delayBtn1.Position = UDim2.new(0, 0, 0, 130)
+    delayBtn1.Size = UDim2.new(0.33, -5, 0, 25)
+    delayBtn1.Position = UDim2.new(0, 0, 0, 125)
     delayBtn1.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
     delayBtn1.Text = "⬅️"
     delayBtn1.TextColor3 = Color3.fromRGB(255, 255, 255)
-    delayBtn1.TextSize = 18
+    delayBtn1.TextSize = 16
     delayBtn1.Font = Enum.Font.GothamBold
     delayBtn1.BorderSizePixel = 0
 
@@ -522,12 +621,12 @@ local function CreateMenu()
 
     local delayBtn2 = Instance.new("TextButton")
     delayBtn2.Parent = content
-    delayBtn2.Size = UDim2.new(0.34, -5, 0, 30)
-    delayBtn2.Position = UDim2.new(0.33, 5, 0, 130)
+    delayBtn2.Size = UDim2.new(0.34, -5, 0, 25)
+    delayBtn2.Position = UDim2.new(0.33, 5, 0, 125)
     delayBtn2.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
-    delayBtn2.Text = "5s"
+    delayBtn2.Text = "🔄"
     delayBtn2.TextColor3 = Color3.fromRGB(255, 255, 255)
-    delayBtn2.TextSize = 14
+    delayBtn2.TextSize = 16
     delayBtn2.Font = Enum.Font.GothamBold
     delayBtn2.BorderSizePixel = 0
 
@@ -537,12 +636,12 @@ local function CreateMenu()
 
     local delayBtn3 = Instance.new("TextButton")
     delayBtn3.Parent = content
-    delayBtn3.Size = UDim2.new(0.33, -5, 0, 30)
-    delayBtn3.Position = UDim2.new(0.67, 5, 0, 130)
+    delayBtn3.Size = UDim2.new(0.33, -5, 0, 25)
+    delayBtn3.Position = UDim2.new(0.67, 5, 0, 125)
     delayBtn3.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
     delayBtn3.Text = "➡️"
     delayBtn3.TextColor3 = Color3.fromRGB(255, 255, 255)
-    delayBtn3.TextSize = 18
+    delayBtn3.TextSize = 16
     delayBtn3.Font = Enum.Font.GothamBold
     delayBtn3.BorderSizePixel = 0
 
@@ -556,8 +655,8 @@ local function CreateMenu()
     end)
 
     delayBtn2.MouseButton1Click:Connect(function()
-        Settings.AutoCapture.Delay = 5.0
-        delayLabel.Text = "⏱️ Delay: 5.0s"
+        Settings.AutoCapture.Delay = 1.5
+        delayLabel.Text = "⏱️ Delay: 1.5s"
     end)
 
     delayBtn3.MouseButton1Click:Connect(function()
@@ -569,14 +668,14 @@ local function CreateMenu()
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Parent = content
     statusLabel.Size = UDim2.new(1, 0, 0, 25)
-    statusLabel.Position = UDim2.new(0, 0, 0, 170)
+    statusLabel.Position = UDim2.new(0, 0, 0, 160)
     statusLabel.BackgroundTransparency = 1
     statusLabel.Text = "📊 Status: Pronto"
     statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
     statusLabel.TextSize = 13
     statusLabel.Font = Enum.Font.Gotham
 
-    -- Botão flutuante
+    -- Float
     local floatBtn = Instance.new("TextButton")
     floatBtn.Parent = screenGui
     floatBtn.Size = UDim2.new(0, 45, 0, 45)
@@ -606,7 +705,6 @@ local function CreateMenu()
     closeBtn.MouseButton1Click:Connect(CloseMenu)
     floatBtn.MouseButton1Click:Connect(OpenMenu)
 
-    -- Atualiza status
     task.spawn(function()
         while true do
             task.wait(2)
@@ -623,7 +721,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - DELAY 5s")
+print("  ✧ SIX SEVEN - DECODIFICADO")
 print("========================================")
 
 pcall(CreateMenu)
@@ -632,6 +730,7 @@ StartMonitoring()
 Player.CharacterAdded:Connect(function(newChar)
     Character = newChar
     RootPart = newChar:FindFirstChild("HumanoidRootPart")
+    Humanoid = newChar:FindFirstChild("Humanoid")
     print("🔄 Respawnou!")
     task.wait(1)
     if espActive then
@@ -642,6 +741,6 @@ end)
 print("========================================")
 print("  ✅ PRONTO!")
 print("  📌 ESP: Mostra pets")
-print("  📌 Auto: Teleporta + Clica")
-print("  📌 Delay padrão: 5 segundos")
+print("  📌 Auto: Teleporta → Laço → Captura → Base")
+print("  📌 Baseado no script ofuscado que você enviou")
 print("========================================")
