@@ -1,9 +1,9 @@
 --[[
-    SIX SEVEN - CAPTURA AUTOMÁTICA (BASEADO NO CONSOLE)
+    SIX SEVEN - VERSÃO CORRIGIDA (SEM ERROS)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - CAPTURA COMPLETA...")
+print("🔄 CARREGANDO SIX SEVEN - VERSÃO CORRIGIDA...")
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -11,7 +11,6 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -25,8 +24,6 @@ local Config = {
     Delay = 5.0,
     TotalClicks = 50,
     ClickSpeed = 0.02,
-    LassoKey = Enum.KeyCode.One,  -- Tecla do lasso
-    CaptureKey = Enum.KeyCode.E,   -- Tecla de interação
 }
 
 -- ========================================
@@ -53,11 +50,7 @@ local function EncontrarPets()
                 local nome = obj.Name:lower()
                 if not nome:find("base") and not nome:find("floor") and not nome:find("wall") then
                     if not nome:find("npc") and not nome:find("humano") and not nome:find("player") then
-                        if not nome:find("coruja") and not nome:find("owl") then
-                            if not nome:find("tree") and not nome:find("rock") then
-                                table.insert(pets, obj)
-                            end
-                        end
+                        table.insert(pets, obj)
                     end
                 end
             end
@@ -67,103 +60,75 @@ local function EncontrarPets()
 end
 
 -- ========================================
--- FUNÇÕES DE CLIQUE E TECLA
+-- FUNÇÃO PARA CLICAR (COM VERIFICAÇÃO)
 -- ========================================
 local function Clicar()
-    pcall(function()
+    local success, err = pcall(function()
         VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
         task.wait(0.02)
         VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
     end)
+    if not success then
+        print("⚠️ Erro ao clicar: " .. tostring(err))
+    end
+    return success
 end
 
+-- ========================================
+-- FUNÇÃO PARA MOVER MOUSE (COM VERIFICAÇÃO)
+-- ========================================
 local function MoverMouse(x, y)
-    pcall(function()
+    if not x or not y then return false end
+    local success, err = pcall(function()
         VirtualInputManager:SendMouseMovement(x, y, Enum.VirtualKeyMode.Delta, game)
     end)
+    if not success then
+        print("⚠️ Erro ao mover mouse: " .. tostring(err))
+    end
+    return success
 end
 
+-- ========================================
+-- FUNÇÃO PARA PRESSIONAR TECLA (COM VERIFICAÇÃO)
+-- ========================================
 local function PressionarTecla(tecla)
-    pcall(function()
+    local success, err = pcall(function()
         VirtualInputManager:SendKeyEvent(true, tecla, false, game)
         task.wait(0.1)
         VirtualInputManager:SendKeyEvent(false, tecla, false, game)
     end)
-end
-
--- ========================================
--- FUNÇÃO PARA ENCONTRAR BOTÃO NA UI
--- ========================================
-local function EncontrarBotao(nome)
-    local guis = {CoreGui, Player:FindFirstChild("PlayerGui")}
-    
-    for _, gui in pairs(guis) do
-        if gui then
-            for _, obj in pairs(gui:GetDescendants()) do
-                if obj:IsA("TextButton") or obj:IsA("ImageButton") then
-                    if obj.Visible then
-                        local texto = obj.Text and obj.Text:lower() or ""
-                        local nomeObj = obj.Name:lower()
-                        
-                        if texto:find(nome) or nomeObj:find(nome) then
-                            return obj
-                        end
-                    end
-                end
-            end
-        end
+    if not success then
+        print("⚠️ Erro ao pressionar tecla: " .. tostring(err))
     end
-    return nil
+    return success
 end
 
 -- ========================================
--- FUNÇÃO PARA CLICAR EM BOTÃO DA UI
--- ========================================
-local function ClicarBotaoUI(botao)
-    if not botao then return false end
-    
-    -- Tenta FireServer
-    pcall(function()
-        botao:FireServer()
-        return true
-    end)
-    
-    -- Tenta Click
-    pcall(function()
-        botao:Click()
-        return true
-    end)
-    
-    -- Tenta clicar com o mouse
-    local absPos = botao.AbsolutePosition
-    local absSize = botao.AbsoluteSize
-    
-    if absPos and absSize and absSize.X > 0 then
-        local x = absPos.X + absSize.X / 2
-        local y = absPos.Y + absSize.Y / 2
-        
-        pcall(function()
-            MoverMouse(x, y)
-            task.wait(0.1)
-            Clicar()
-            return true
-        end)
-    end
-    
-    return false
-end
-
--- ========================================
--- FUNÇÃO PARA CAPTURAR PET
+-- FUNÇÃO PARA CAPTURAR PET (CORRIGIDA)
 -- ========================================
 local function CapturarPet(pet)
-    if processando then return false end
-    if capturados[pet] then return false end
-    if not pet or not pet:IsA("Model") then return false end
+    -- VERIFICAÇÕES INICIAIS
+    if processando then 
+        print("⏳ Já processando...")
+        return false 
+    end
+    
+    if capturados[pet] then 
+        print("⏳ Pet já capturado...")
+        return false 
+    end
+    
+    if not pet or not pet:IsA("Model") then 
+        print("❌ Pet inválido")
+        return false 
+    end
     
     processando = true
+    
+    -- Verifica se o pet tem HumanoidRootPart
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then 
+        print("❌ Pet sem HumanoidRootPart")
         processando = false
         return false 
     end
@@ -171,66 +136,64 @@ local function CapturarPet(pet)
     print("\n🎯 CAPTURANDO: " .. pet.Name)
     status.Text = "🎯 Capturando: " .. pet.Name
     
-    -- 1. Teleporta para o pet
+    -- 1. TELEPORTA PARA O PET
     if RootPart then
-        pcall(function()
+        local success, err = pcall(function()
             RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 0))
         end)
+        if not success then
+            print("⚠️ Erro ao teleportar: " .. tostring(err))
+        end
         task.wait(0.3)
     end
     
-    -- 2. Equipa o lasso (tecla 1)
-    print("🎯 Equipando lasso...")
-    PressionarTecla(Config.LassoKey)
+    -- 2. EQUIPA O LASSO (TECLA 1)
+    print("🎯 Equipando lasso (Tecla 1)...")
+    PressionarTecla(Enum.KeyCode.One)
     task.wait(0.3)
     
-    -- 3. Clica no lasso para ativar (se precisar)
+    -- 3. ATIVA O LASSO (CLICA NO CENTRO)
     print("🎯 Ativando lasso...")
     local camera = Workspace.CurrentCamera
     if camera then
         local viewport = camera.ViewportSize
-        MoverMouse(viewport.X/2, viewport.Y/2)
-        task.wait(0.1)
-        Clicar()
-        task.wait(0.3)
-    end
-    
-    -- 4. Move o mouse para o pet (mirar)
-    print("🎯 Mirando no pet...")
-    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-    if onScreen then
-        MoverMouse(pos.X, pos.Y)
-        task.wait(0.2)
-    else
-        -- Se não está na tela, teleporta mais perto
-        if RootPart then
-            pcall(function()
-                RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 1.5, 0))
-            end)
+        if viewport then
+            MoverMouse(viewport.X/2, viewport.Y/2)
+            task.wait(0.1)
+            Clicar()
             task.wait(0.3)
         end
-        pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-        if onScreen then
+    end
+    
+    -- 4. MIRA NO PET
+    print("🎯 Mirando no pet...")
+    if camera then
+        local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+        if onScreen and pos then
             MoverMouse(pos.X, pos.Y)
             task.wait(0.2)
+        else
+            -- Tenta teleportar mais perto
+            if RootPart then
+                pcall(function()
+                    RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 1.5, 0))
+                end)
+                task.wait(0.3)
+            end
+            local newPos, newOnScreen = camera:WorldToViewportPoint(hrp.Position)
+            if newOnScreen and newPos then
+                MoverMouse(newPos.X, newPos.Y)
+                task.wait(0.2)
+            end
         end
     end
     
-    -- 5. Lança o lasso (clique)
+    -- 5. LANÇA O LASSO
     print("🎯 Lançando lasso!")
     Clicar()
     task.wait(0.5)
     
-    -- 6. PROCURA E CLICA NO BOTÃO "FARM PET" (baseado no console)
-    print("🔍 Procurando botão 'farm pet'...")
-    local botaoFarm = EncontrarBotao("farm") or EncontrarBotao("pet") or EncontrarBotao("capture")
-    if botaoFarm then
-        print("✅ Botão encontrado: " .. botaoFarm.Name)
-        ClicarBotaoUI(botaoFarm)
-        task.wait(0.3)
-    end
-    
-    -- 7. CLICA REPETIDAMENTE PARA ENCHER A BARRA
+    -- 6. CLICA REPETIDAMENTE PARA ENCHER A BARRA
     print("🖱️ Enchendo a barra de captura...")
     for i = 1, Config.TotalClicks do
         Clicar()
@@ -242,7 +205,7 @@ local function CapturarPet(pet)
     
     task.wait(0.5)
     
-    -- 8. Verifica se capturou
+    -- 7. VERIFICA SE CAPTUROU
     local pasta = Player:FindFirstChild("Pets")
     if pasta then
         for _, p in pairs(pasta:GetChildren()) do
@@ -257,6 +220,7 @@ local function CapturarPet(pet)
         end
     end
     
+    -- Verifica se o pet foi destruído
     if not pet.Parent then
         capturados[pet] = true
         totalCapturados = totalCapturados + 1
@@ -295,19 +259,10 @@ local function LevarPetBase(pet)
         end)
         task.wait(0.3)
     end
-    
-    -- Tenta soltar
-    local release = ReplicatedStorage:FindFirstChild("ReleasePet")
-        or ReplicatedStorage:FindFirstChild("DropPet")
-    if release then
-        pcall(function()
-            release:FireServer(pet)
-        end)
-    end
 end
 
 -- ========================================
--- LOOP AUTO
+-- LOOP AUTO (CORRIGIDO)
 -- ========================================
 local function LoopAuto()
     while autoAtivo and autoRodando do
@@ -390,8 +345,8 @@ local function CriarMenu()
     
     local frame = Instance.new("Frame")
     frame.Parent = gui
-    frame.Size = UDim2.new(0, 260, 0, 220)
-    frame.Position = UDim2.new(0.5, -130, 0.5, -110)
+    frame.Size = UDim2.new(0, 260, 0, 200)
+    frame.Position = UDim2.new(0.5, -130, 0.5, -100)
     frame.BackgroundColor3 = Color3.fromRGB(10, 10, 30)
     frame.BackgroundTransparency = 0.1
     frame.Active = true
@@ -593,14 +548,7 @@ Player.CharacterAdded:Connect(function(newChar)
 end)
 
 print("========================================")
-print("  ✅ SCRIPT PRONTO!")
-print("  📌 Baseado no diagnóstico:")
-print("  - Tecla 1 para lasso")
-print("  - Botão 'farm pet' na UI")
-print("  - Cliques para encher a barra")
-print("========================================")
-print("🔥 TESTE AGORA!")
-print("  1. Ligue o ESP")
-print("  2. Ligue o AUTO")
-print("  3. Veja o que acontece")
+print("  ✅ SCRIPT CORRIGIDO!")
+print("  📌 Todos os erros foram tratados")
+print("  📌 Clique em AUTO para testar")
 print("========================================")
