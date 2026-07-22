@@ -1,16 +1,16 @@
 --[[
-    Six Seven - Com Clique Rápido (Baseado no script ofuscado)
+    Six Seven - Auto Farm & ESP (Versão Decodificada)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - CLIQUE RÁPIDO...")
+print("🔄 CARREGANDO SIX SEVEN DECODIFICADO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -23,10 +23,10 @@ local Humanoid = Character and Character:FindFirstChild("Humanoid")
 local Settings = {
     AutoCapture = { 
         Enabled = false, 
-        Delay = 5.0,
+        Delay = 3.0,
         TeleportDelay = 0.3,
-        ClickSpeed = 0.02,    -- Velocidade dos cliques (do ofuscado)
-        TotalClicks = 30      -- Quantos cliques para encher a barra (do ofuscado)
+        ClickSpeed = 0.02,
+        TotalClicks = 30
     },
     ESP = {
         Enabled = false,
@@ -49,7 +49,27 @@ local totalCaptured = 0
 local isProcessing = false
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR PETS (DO SEU SCRIPT)
+-- LISTA DE NPCS PARA IGNORAR
+-- ========================================
+local npcNames = {
+    "npc", "humano", "personagem", "vendedor", "lojista", 
+    "guarda", "civil", "aldeao", "comerciante", "treinador",
+    "professor", "mestre", "ancião", "mercador", "coruja", "owl"
+}
+
+local function IsNPC(obj)
+    if not obj then return false end
+    local name = obj.Name:lower()
+    for _, npc in pairs(npcNames) do
+        if name:find(npc) then
+            return true
+        end
+    end
+    return false
+end
+
+-- ========================================
+-- FUNÇÃO PARA ENCONTRAR PETS
 -- ========================================
 local function FindAllPets()
     local pets = {}
@@ -59,15 +79,10 @@ local function FindAllPets()
             if obj == Character then continue end
             if obj == Player.Character then continue end
             if Players:GetPlayerFromCharacter(obj) then continue end
+            if IsNPC(obj) then continue end
             
             local name = obj.Name:lower()
             if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
-                continue
-            end
-            if name:find("npc") or name:find("humano") or name:find("personagem") then
-                continue
-            end
-            if name:find("coruja") or name:find("owl") then
                 continue
             end
             
@@ -94,34 +109,7 @@ local function FindAllPets()
 end
 
 -- ========================================
--- TELEPORTE SUAVE (DO SEU SCRIPT)
--- ========================================
-local function SmoothTeleport(targetPos)
-    if not RootPart then return end
-    
-    local currentPos = RootPart.Position
-    local dist = (currentPos - targetPos).Magnitude
-    
-    if dist > 5 then
-        local steps = math.min(math.floor(dist / 3), 5)
-        for i = 1, steps do
-            local progress = i / steps
-            local newPos = currentPos:Lerp(targetPos, progress)
-            pcall(function()
-                RootPart.CFrame = CFrame.new(newPos)
-            end)
-            task.wait(Settings.AutoCapture.TeleportDelay)
-        end
-    end
-    
-    pcall(function()
-        RootPart.CFrame = CFrame.new(targetPos)
-    end)
-    task.wait(0.2)
-end
-
--- ========================================
--- FUNÇÃO PARA EQUIPAR O LAÇO (DO OFUSCADO)
+-- FUNÇÃO PARA EQUIPAR O LAÇO
 -- ========================================
 local function EquipLasso()
     -- Procura o laço no inventário (Backpack)
@@ -155,7 +143,7 @@ local function EquipLasso()
 end
 
 -- ========================================
--- FUNÇÃO PARA ATIVAR O LAÇO (DO OFUSCADO)
+-- FUNÇÃO PARA ATIVAR O LAÇO
 -- ========================================
 local function ActivateLasso()
     -- Tenta ativar via tool
@@ -173,7 +161,7 @@ local function ActivateLasso()
 end
 
 -- ========================================
--- FUNÇÃO PARA LANÇAR O LAÇO (DO OFUSCADO)
+-- FUNÇÃO PARA LANÇAR O LAÇO NO PET
 -- ========================================
 local function ThrowLasso(pet)
     if not pet then return false end
@@ -226,12 +214,12 @@ local function ThrowLasso(pet)
 }
 
 -- ========================================
--- FUNÇÃO PARA CLICAR RÁPIDO (DO OFUSCADO - ENCHE A BARRA)
+-- FUNÇÃO PARA CLICAR RÁPIDO (ENCHE A BARRA)
 -- ========================================
 local function RapidClick()
     print("🖱️ Iniciando cliques rápidos...")
     
-    -- Clica várias vezes rapidamente (igual ao ofuscado)
+    -- Clica várias vezes rapidamente
     for i = 1, Settings.AutoCapture.TotalClicks do
         pcall(function()
             -- Clique do mouse
@@ -251,7 +239,34 @@ local function RapidClick()
 }
 
 -- ========================================
--- CAPTURAR PET (COMBINADO: SEU SCRIPT + OFUSCADO)
+-- TELEPORTE SUAVE
+-- ========================================
+local function SmoothTeleport(targetPos)
+    if not RootPart then return end
+    
+    local currentPos = RootPart.Position
+    local dist = (currentPos - targetPos).Magnitude
+    
+    if dist > 5 then
+        local steps = math.min(math.floor(dist / 3), 5)
+        for i = 1, steps do
+            local progress = i / steps
+            local newPos = currentPos:Lerp(targetPos, progress)
+            pcall(function()
+                RootPart.CFrame = CFrame.new(newPos)
+            end)
+            task.wait(Settings.AutoCapture.TeleportDelay)
+        end
+    end
+    
+    pcall(function()
+        RootPart.CFrame = CFrame.new(targetPos)
+    end)
+    task.wait(0.2)
+end
+
+-- ========================================
+-- CAPTURAR PET (COMPLETO)
 -- ========================================
 local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
@@ -268,12 +283,12 @@ local function CapturePet(pet)
     
     print("🎯 Capturando: " .. pet.Name)
     
-    -- 1. Teleporta suavemente (do seu script)
+    -- 1. Teleporta até o pet
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     SmoothTeleport(targetPos)
     task.wait(0.3)
     
-    -- 2. Lança o laço no pet (do ofuscado)
+    -- 2. Lança o laço no pet
     local success = ThrowLasso(pet)
     if not success then
         isProcessing = false
@@ -282,7 +297,7 @@ local function CapturePet(pet)
     
     task.wait(0.5)
     
-    -- 3. CLICA RÁPIDO PARA ENCHER A BARRA! (do ofuscado)
+    -- 3. CLICA RÁPIDO PARA ENCHER A BARRA!
     print("🔄 Enchendo a barra de captura...")
     RapidClick()
     
@@ -293,7 +308,7 @@ local function CapturePet(pet)
 end
 
 -- ========================================
--- LEVAR PET À BASE (DO SEU SCRIPT)
+-- LEVAR PET À BASE
 -- ========================================
 local function BringPetToBase(pet)
     if not pet then return end
@@ -328,7 +343,7 @@ local function BringPetToBase(pet)
 end
 
 -- ========================================
--- LOOP AUTO CAPTURE (DO SEU SCRIPT)
+-- LOOP AUTO CAPTURE
 -- ========================================
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
@@ -377,7 +392,7 @@ local function AutoCaptureLoop()
 end
 
 -- ========================================
--- SISTEMA ESP (DO SEU SCRIPT)
+-- SISTEMA ESP
 -- ========================================
 local function CreateESP(pet)
     if not pet or not pet:IsA("Model") then return end
@@ -481,7 +496,7 @@ local function UpdateESP()
 end
 
 -- ========================================
--- MONITORAMENTO (DO SEU SCRIPT)
+-- MONITORAMENTO
 -- ========================================
 local function StartMonitoring()
     task.spawn(function()
@@ -510,7 +525,7 @@ local function StartMonitoring()
 end
 
 -- ========================================
--- MENU (DO SEU SCRIPT COM CONTADOR)
+-- MENU
 -- ========================================
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
@@ -520,8 +535,8 @@ local function CreateMenu()
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 320, 0, 320)
-    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -160)
+    mainFrame.Size = UDim2.new(0, 320, 0, 300)
+    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -150)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
@@ -658,7 +673,7 @@ local function CreateMenu()
     delayBtn2.Size = UDim2.new(0.34, -5, 0, 25)
     delayBtn2.Position = UDim2.new(0.33, 5, 0, 110)
     delayBtn2.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
-    delayBtn2.Text = "5s"
+    delayBtn2.Text = "3s"
     delayBtn2.TextColor3 = Color3.fromRGB(255, 255, 255)
     delayBtn2.TextSize = 14
     delayBtn2.Font = Enum.Font.GothamBold
@@ -689,8 +704,8 @@ local function CreateMenu()
     end)
 
     delayBtn2.MouseButton1Click:Connect(function()
-        Settings.AutoCapture.Delay = 5.0
-        delayLabel.Text = "⏱️ Delay: 5.0s"
+        Settings.AutoCapture.Delay = 3.0
+        delayLabel.Text = "⏱️ Delay: 3.0s"
     end)
 
     delayBtn3.MouseButton1Click:Connect(function()
@@ -709,7 +724,7 @@ local function CreateMenu()
     statusLabel.TextSize = 13
     statusLabel.Font = Enum.Font.Gotham
 
-    -- Total capturado
+    -- Total
     local totalLabel = Instance.new("TextLabel")
     totalLabel.Parent = content
     totalLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -767,13 +782,12 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - CLIQUE RÁPIDO")
+print("  ✧ SIX SEVEN - DECODIFICADO")
 print("========================================")
 print("  📖 COMO FUNCIONA:")
 print("  1. Teleporta até o pet")
 print("  2. Lança o laço")
 print("  3. CLICA RÁPIDO para encher a barra!")
-print("  🖱️ " .. Settings.AutoCapture.TotalClicks .. " cliques em " .. Settings.AutoCapture.ClickSpeed .. "s")
 print("========================================")
 
 pcall(CreateMenu)
@@ -792,7 +806,6 @@ end)
 
 print("========================================")
 print("  ✅ PRONTO!")
-print("  📌 ESP: Mostra pets")
 print("  📌 Auto: Teleporta → Laço → CLICA RÁPIDO")
-print("  📌 Delay padrão: 5 segundos")
+print("  📌 O script clica automaticamente para encher a barra!")
 print("========================================")
