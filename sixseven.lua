@@ -1,5 +1,5 @@
 --[[
-    SIX SEVEN - COMPLETO (Com Campos Editáveis)
+    SIX SEVEN - COMPLETO (Com Campos Editáveis + Contador 5G)
     Game: [🍎] Capture e Domestique!
 ]]
 
@@ -23,7 +23,8 @@ local Settings = {
     AutoCapture = { 
         Enabled = false, 
         Delay = 5.0,
-        TeleportDelay = 0.3
+        TeleportDelay = 0.3,
+        MaxPerCycle = 5  -- Máximo de pets por ciclo
     },
     ESP = {
         Enabled = false,
@@ -44,6 +45,12 @@ local capturedPets = {}
 local espObjects = {}
 local petPositions = {}
 local menuAberto = true
+
+-- Variáveis do contador 5G
+local captureCounter = 0
+local maxCapturesPerCycle = 5
+local waitingForNextCycle = false
+local onCycleComplete = nil  -- Função callback
 
 -- ========================================
 -- FUNÇÃO PARA ENCONTRAR PETS
@@ -211,10 +218,35 @@ local function BringPetToBase(pet)
 end
 
 -- ========================================
--- LOOP AUTO CAPTURE
+-- LOOP AUTO CAPTURE COM CONTADOR 5G
 -- ========================================
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
+        -- Verifica se atingiu o limite do ciclo
+        if captureCounter >= maxCapturesPerCycle then
+            print("🔒 Ciclo de 5 capturas completo! Aguardando próximo ciclo...")
+            waitingForNextCycle = true
+            
+            -- Notifica via callback
+            if onCycleComplete then
+                onCycleComplete()
+            end
+            
+            -- Espera até ser liberado
+            while waitingForNextCycle and autoCapture and autoCaptureRunning do
+                task.wait(0.5)
+            end
+            
+            -- Se foi cancelado, sai
+            if not autoCapture or not autoCaptureRunning then
+                break
+            end
+            
+            -- Reseta o contador
+            captureCounter = 0
+            print("🔄 Reiniciando ciclo de capturas...")
+        end
+        
         task.spawn(function()
             local pets = FindAllPets()
             local target = nil
@@ -243,7 +275,8 @@ local function AutoCaptureLoop()
                 if success then
                     capturedPets[target] = true
                     BringPetToBase(target)
-                    print("✅ " .. target.Name .. " capturado!")
+                    captureCounter = captureCounter + 1
+                    print("✅ " .. target.Name .. " capturado! (" .. captureCounter .. "/" .. maxCapturesPerCycle .. ")")
                 end
                 task.wait(Settings.AutoCapture.Delay)
             else
@@ -252,6 +285,18 @@ local function AutoCaptureLoop()
         end)
         task.wait(0.1)
     end
+end
+
+-- ========================================
+-- FUNÇÃO PARA AVANÇAR CICLO
+-- ========================================
+local function AdvanceToNextCycle()
+    if waitingForNextCycle then
+        waitingForNextCycle = false
+        print("▶️ Avançando para próximo ciclo!")
+        return true
+    end
+    return false
 end
 
 -- ========================================
@@ -501,8 +546,8 @@ local function CreateMenu()
     -- Frame principal
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 220, 0, 290)
-    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -145)
+    mainFrame.Size = UDim2.new(0, 220, 0, 330)  -- Aumentado para caber o novo botão
+    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -165)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -552,7 +597,7 @@ local function CreateMenu()
     local sep = Instance.new("Frame")
     sep.Parent = mainFrame
     sep.Size = UDim2.new(0.9, 0, 0, 1)
-    sep.Position = UDim2.new(0.05, 0, 0.13, 0)
+    sep.Position = UDim2.new(0.05, 0, 0.12, 0)
     sep.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     sep.BackgroundTransparency = 0.5
 
@@ -560,7 +605,7 @@ local function CreateMenu()
     local container = Instance.new("Frame")
     container.Parent = mainFrame
     container.Size = UDim2.new(0.9, 0, 0.7, 0)
-    container.Position = UDim2.new(0.05, 0, 0.17, 0)
+    container.Position = UDim2.new(0.05, 0, 0.16, 0)
     container.BackgroundTransparency = 1
 
     local layout = Instance.new("UIListLayout")
@@ -638,11 +683,56 @@ local function CreateMenu()
         autoBtn.BackgroundColor3 = autoCapture and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 120)
         if autoCapture then
             if not autoCaptureRunning then
+                captureCounter = 0  -- Reset contador
+                waitingForNextCycle = false
                 autoCaptureRunning = true
                 task.spawn(AutoCaptureLoop)
             end
         else
             autoCaptureRunning = false
+            waitingForNextCycle = false
+        end
+    end)
+
+    -- ========================================
+    -- BOTÃO PRÓXIMO (5G)
+    -- ========================================
+    local nextBtn = Instance.new("TextButton")
+    nextBtn.Parent = container
+    nextBtn.Size = UDim2.new(1, 0, 0, 28)
+    nextBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 50)
+    nextBtn.Text = "⏭️ PRÓXIMO (5/5)"
+    nextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nextBtn.TextSize = 13
+    nextBtn.Font = Enum.Font.GothamBold
+    nextBtn.BorderSizePixel = 0
+    
+    local nextCorner = Instance.new("UICorner")
+    nextCorner.Parent = nextBtn
+    nextCorner.CornerRadius = UDim.new(0, 5)
+
+    -- Função para atualizar o texto do botão
+    local function UpdateNextButton()
+        if captureCounter >= maxCapturesPerCycle and waitingForNextCycle then
+            nextBtn.Text = "⏭️ PRÓXIMO (5/5)"
+            nextBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
+            nextBtn.Visible = true
+        else
+            nextBtn.Text = "⏭️ AGUARDANDO..."
+            nextBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            nextBtn.Visible = false
+        end
+    end
+
+    -- Callback quando ciclo completa
+    onCycleComplete = function()
+        UpdateNextButton()
+    end
+
+    -- Ação do botão próximo
+    nextBtn.MouseButton1Click:Connect(function()
+        if AdvanceToNextCycle() then
+            UpdateNextButton()
         end
     end)
 
@@ -694,7 +784,11 @@ local function CreateMenu()
         while true do
             task.wait(2)
             local count = #FindAllPets()
-            statusLabel.Text = "📊 Pets: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF")
+            local counterText = ""
+            if autoCapture then
+                counterText = " | 📊 " .. captureCounter .. "/" .. maxCapturesPerCycle
+            end
+            statusLabel.Text = "📊 Pets: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF") .. counterText
         end
     end)
 
@@ -711,6 +805,7 @@ print("========================================")
 print("  📌 Digite o valor no campo")
 print("  📌 Use + e - para ajustar")
 print("  📌 ESP e Auto Capture")
+print("  📌 Contador 5G incluso")
 print("========================================")
 
 pcall(CreateMenu)
