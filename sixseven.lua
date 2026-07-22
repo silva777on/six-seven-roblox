@@ -1,9 +1,9 @@
 --[[
-    Six Seven - Versão Melhorada (Baseado na Wiki)
+    Six Seven - Versão Estável + Wiki
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - VERSÃO MELHORADA...")
+print("🔄 CARREGANDO SIX SEVEN - VERSÃO ESTÁVEL + WIKI...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -28,11 +28,6 @@ local Settings = {
         Enabled = false,
         Color = Color3.fromRGB(0, 255, 0),
         MaxDistance = 200
-    },
-    Filtros = {
-        PriorizarRaros = true,
-        DistanciaMinima = 5,
-        DistanciaMaxima = 150
     }
 }
 
@@ -49,52 +44,7 @@ local petList = {}
 local totalCaptured = 0
 
 -- ========================================
--- LISTA DE ANIMAIS POR RARIDADE (BASEADO NA WIKI)
--- ========================================
-local Raridades = {
-    Lendario = {"fenix", "tita", "lobolunar", "fadasolar"},
-    Mistico = {"dragao", "fada", "golem", "serpente"},
-    Raro = {"aguia", "urso", "gato", "cachorro"},
-    Incomum = {"ovelha", "lobo", "veado", "raposa"},
-    Comum = {"capivara", "galinha", "coelho", "pato"}
-}
-
-local function GetRaridade(nome)
-    if not nome then return "Comum" end
-    local name = nome:lower()
-    for _, a in pairs(Raridades.Lendario) do
-        if name:find(a) then return "Lendario" end
-    end
-    for _, a in pairs(Raridades.Mistico) do
-        if name:find(a) then return "Mistico" end
-    end
-    for _, a in pairs(Raridades.Raro) do
-        if name:find(a) then return "Raro" end
-    end
-    for _, a in pairs(Raridades.Incomum) do
-        if name:find(a) then return "Incomum" end
-    end
-    for _, a in pairs(Raridades.Comum) do
-        if name:find(a) then return "Comum" end
-    end
-    return "Comum"
-end
-
-local function GetCorPorRaridade(raridade)
-    if raridade == "Lendario" then return Color3.fromRGB(255, 0, 0)
-    elseif raridade == "Mistico" then return Color3.fromRGB(255, 215, 0)
-    elseif raridade == "Raro" then return Color3.fromRGB(150, 0, 255)
-    elseif raridade == "Incomum" then return Color3.fromRGB(0, 150, 255)
-    else return Color3.fromRGB(0, 255, 0) end
-end
-
-local function GetPrioridade(raridade)
-    local ordem = {Lendario=5, Mistico=4, Raro=3, Incomum=2, Comum=1}
-    return ordem[raridade] or 0
-end
-
--- ========================================
--- FUNÇÃO PARA ENCONTRAR PETS (MELHORADA)
+-- FUNÇÃO PARA ENCONTRAR PETS (IGUAL AO QUE FUNCIONAVA)
 -- ========================================
 local function FindAllPets()
     local pets = {}
@@ -106,30 +56,24 @@ local function FindAllPets()
             if Players:GetPlayerFromCharacter(obj) then continue end
             
             local name = obj.Name:lower()
-            
-            -- Filtra NPCs e objetos
-            if name:find("npc") or name:find("humano") or name:find("personagem") then continue end
-            if name:find("coruja") or name:find("owl") then continue end
-            if name:find("base") or name:find("floor") or name:find("wall") then continue end
-            if name:find("ground") or name:find("tree") or name:find("rock") then continue end
-            
-            -- Verifica se tem Humanoid (é um animal)
-            if not obj:FindFirstChild("Humanoid") then continue end
+            if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
+                continue
+            end
+            if name:find("npc") or name:find("humano") or name:find("personagem") then
+                continue
+            end
+            if name:find("coruja") or name:find("owl") then
+                continue
+            end
             
             local hrp = obj:FindFirstChild("HumanoidRootPart")
-            if hrp and RootPart then
-                local dist = (RootPart.Position - hrp.Position).Magnitude
-                
-                -- Filtra por distância
-                if dist < Settings.Filtros.DistanciaMinima then continue end
-                if dist > Settings.Filtros.DistanciaMaxima then continue end
-                
-                -- Verifica se está se movendo
+            if hrp then
                 local currentPos = hrp.Position
+                
                 if petPositions[obj] then
                     local oldPos = petPositions[obj]
-                    local moveDist = (currentPos - oldPos).Magnitude
-                    if moveDist > 0.1 then
+                    local dist = (currentPos - oldPos).Magnitude
+                    if dist > 0.1 then
                         table.insert(pets, obj)
                     end
                 else
@@ -139,15 +83,6 @@ local function FindAllPets()
                 petPositions[obj] = currentPos
             end
         end
-    end
-    
-    -- Ordena por raridade (prioriza os mais raros)
-    if Settings.Filtros.PriorizarRaros then
-        table.sort(pets, function(a, b)
-            local ra = GetRaridade(a.Name)
-            local rb = GetRaridade(b.Name)
-            return GetPrioridade(ra) > GetPrioridade(rb)
-        end)
     end
     
     return pets
@@ -181,55 +116,50 @@ local function SmoothTeleport(targetPos)
 end
 
 -- ========================================
--- CAPTURAR PET (MELHORADO)
+-- CLICAR NO PET
 -- ========================================
-local function CapturePet(pet)
-    if not pet or not pet:IsA("Model") then return false end
-    if capturedPets[pet] then return false end
-    
+local function ClickOnPet(pet)
+    if not pet then return false end
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
-    local raridade = GetRaridade(pet.Name)
-    print("🎯 Capturando: " .. pet.Name .. " (" .. raridade .. ")")
+    local camera = workspace.CurrentCamera
+    if not camera then return false end
     
-    -- Teleporta para o pet
+    local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+    if not onScreen then return false end
+    
+    pcall(function()
+        local mouse = Player:GetMouse()
+        if mouse then
+            mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
+            task.wait(0.1)
+            mouse.Button1Click()
+            print("🖱️ Clique em: " .. pet.Name)
+            return true
+        end
+    end)
+    
+    return false
+end
+
+-- ========================================
+-- CAPTURAR PET
+-- ========================================
+local function CapturePet(pet)
+    if not pet or not pet:IsA("Model") then return false end
+    local hrp = pet:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    print("🎯 Capturando: " .. pet.Name)
+    
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     SmoothTeleport(targetPos)
     
-    -- Tenta capturar via Remote
-    local remote = ReplicatedStorage:FindFirstChild("CapturePet")
-        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Capture")
+    local success = ClickOnPet(pet)
+    task.wait(1.0)
     
-    if remote then
-        pcall(function() 
-            remote:FireServer(pet)
-            print("📡 Remote: " .. pet.Name)
-            task.wait(0.5)
-            return true
-        end)
-    end
-    
-    -- Fallback: clicar no pet
-    local camera = workspace.CurrentCamera
-    if camera then
-        local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-        if onScreen then
-            pcall(function()
-                local mouse = Player:GetMouse()
-                if mouse then
-                    mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
-                    task.wait(0.1)
-                    mouse.Button1Click()
-                    print("🖱️ Clique: " .. pet.Name)
-                    task.wait(0.5)
-                    return true
-                end
-            end)
-        end
-    end
-    
-    return false
+    return success
 end
 
 -- ========================================
@@ -256,14 +186,13 @@ local function BringPetToBase(pet)
     
     if releaseRemote then
         pcall(function() 
-            releaseRemote:FireServer(pet)
+            releaseRemote:FireServer(pet) 
             print("📦 Pet solto na base!")
         end)
         task.wait(0.3)
     end
     
     totalCaptured = totalCaptured + 1
-    print("🏆 Total capturado: " .. totalCaptured)
 end
 
 -- ========================================
@@ -281,7 +210,6 @@ local function AutoCaptureLoop()
                 return
             end
             
-            -- Encontra o pet mais próximo (ou mais raro)
             for _, pet in pairs(pets) do
                 if not capturedPets[pet] then
                     local hrp = pet:FindFirstChild("HumanoidRootPart")
@@ -312,7 +240,7 @@ local function AutoCaptureLoop()
 end
 
 -- ========================================
--- SISTEMA ESP (MELHORADO - CORES POR RARIDADE)
+-- SISTEMA ESP (IGUAL AO QUE FUNCIONAVA)
 -- ========================================
 local function CreateESP(pet)
     if not pet or not pet:IsA("Model") then return end
@@ -321,12 +249,9 @@ local function CreateESP(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    local raridade = GetRaridade(pet.Name)
-    local cor = GetCorPorRaridade(raridade)
-    
     local highlight = Instance.new("Highlight")
     highlight.Parent = pet
-    highlight.FillColor = cor
+    highlight.FillColor = Settings.ESP.Color
     highlight.FillTransparency = 0.3
     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
     highlight.OutlineTransparency = 0.1
@@ -335,13 +260,13 @@ local function CreateESP(pet)
     
     local billboard = Instance.new("BillboardGui")
     billboard.Parent = hrp
-    billboard.Size = UDim2.new(0, 150, 0, 35)
+    billboard.Size = UDim2.new(0, 150, 0, 30)
     billboard.Adornee = hrp
     billboard.AlwaysOnTop = true
     
     local label = Instance.new("TextLabel")
     label.Parent = billboard
-    label.Size = UDim2.new(1, 0, 0.6, 0)
+    label.Size = UDim2.new(1, 0, 1, 0)
     label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     label.BackgroundTransparency = 0.5
     label.Text = "🐾 " .. pet.Name
@@ -349,16 +274,6 @@ local function CreateESP(pet)
     label.TextSize = 14
     label.Font = Enum.Font.GothamBold
     label.TextScaled = true
-    
-    local rarLabel = Instance.new("TextLabel")
-    rarLabel.Parent = billboard
-    rarLabel.Size = UDim2.new(1, 0, 0.4, 0)
-    rarLabel.Position = UDim2.new(0, 0, 0.6, 0)
-    rarLabel.BackgroundTransparency = 1
-    rarLabel.Text = "⭐ " .. raridade
-    rarLabel.TextColor3 = cor
-    rarLabel.TextSize = 12
-    rarLabel.Font = Enum.Font.GothamBold
     
     local distLabel = Instance.new("TextLabel")
     distLabel.Parent = billboard
@@ -374,11 +289,10 @@ local function CreateESP(pet)
         Highlight = highlight,
         Billboard = billboard,
         Label = label,
-        RarLabel = rarLabel,
         DistLabel = distLabel
     }
     
-    print("✅ ESP: " .. pet.Name .. " (" .. raridade .. ")")
+    print("✅ ESP criado para: " .. pet.Name)
 end
 
 local function RemoveESP(pet)
@@ -469,8 +383,8 @@ local function CreateMenu()
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 320, 0, 300)
-    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -150)
+    mainFrame.Size = UDim2.new(0, 320, 0, 320)
+    mainFrame.Position = UDim2.new(0.5, -160, 0.5, -160)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
@@ -669,6 +583,17 @@ local function CreateMenu()
     totalLabel.TextSize = 13
     totalLabel.Font = Enum.Font.Gotham
 
+    -- Legenda de cores (Wiki)
+    local legendaLabel = Instance.new("TextLabel")
+    legendaLabel.Parent = content
+    legendaLabel.Size = UDim2.new(1, 0, 0, 25)
+    legendaLabel.Position = UDim2.new(0, 0, 0, 200)
+    legendaLabel.BackgroundTransparency = 1
+    legendaLabel.Text = "🟢Comum 🔵Incomum 🟣Raro 🟡Místico 🔴Lendário"
+    legendaLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    legendaLabel.TextSize = 11
+    legendaLabel.Font = Enum.Font.Gotham
+
     -- Float
     local floatBtn = Instance.new("TextButton")
     floatBtn.Parent = screenGui
@@ -716,12 +641,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - VERSÃO MELHORADA")
-print("========================================")
-print("  📖 BASEADO NA WIKI DO JOGO:")
-print("  🟢 Comum  | 🔵 Incomum")
-print("  🟣 Raro   | 🟡 Místico")
-print("  🔴 Lendário")
+print("  ✧ SIX SEVEN - ESTÁVEL + WIKI")
 print("========================================")
 
 pcall(CreateMenu)
@@ -739,7 +659,7 @@ end)
 
 print("========================================")
 print("  ✅ PRONTO!")
-print("  📌 ESP: Mostra pets por raridade")
+print("  📌 ESP: Mostra pets")
 print("  📌 Auto: Teleporta + Clica")
 print("  📌 Delay padrão: 5 segundos")
 print("========================================")
