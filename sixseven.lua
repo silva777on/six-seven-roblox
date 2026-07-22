@@ -1,4 +1,4 @@
--- SIX SEVEN - VERSÃO FINAL COMPLETA
+-- SIX SEVEN - VERSÃO FINAL COM CAPTURA COMPLETA
 print("🚀 INICIANDO SIX SEVEN...")
 
 -- ===== SERVIÇOS =====
@@ -72,51 +72,111 @@ local function ApplyJump()
     end
 end
 
--- ===== TELEPORTE =====
-local function TeleportTo(pos)
-    if RootPart then
-        pcall(function()
-            RootPart.CFrame = CFrame.new(pos)
-        end)
-        task.wait(0.2)
-    end
-end
-
--- ===== CLICAR NO PET =====
-local function ClickPet(pet)
-    local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
+-- ===== TELEPORTE SUAVE =====
+local function TeleportTo(targetPos)
+    if not RootPart then return end
     
-    local cam = workspace.CurrentCamera
-    if not cam then return false end
+    local currentPos = RootPart.Position
+    local dist = (currentPos - targetPos).Magnitude
     
-    local pos, onScreen = cam:WorldToViewportPoint(hrp.Position)
-    if not onScreen then return false end
-    
-    local success = false
-    pcall(function()
-        local mouse = Player:GetMouse()
-        if mouse then
-            mouse.Move(Vector2.new(pos.X, pos.Y))
-            task.wait(0.1)
-            mouse.Button1Click()
-            success = true
+    -- Teleporte suave se estiver longe
+    if dist > 5 then
+        local steps = math.min(math.floor(dist / 3), 5)
+        for i = 1, steps do
+            local progress = i / steps
+            local newPos = currentPos:Lerp(targetPos, progress)
+            pcall(function()
+                RootPart.CFrame = CFrame.new(newPos)
+            end)
+            task.wait(0.05)
         end
+    end
+    
+    -- Teleporte final
+    pcall(function()
+        RootPart.CFrame = CFrame.new(targetPos)
     end)
-    return success
+    task.wait(0.1)
 end
 
--- ===== CAPTURAR PET =====
+-- ===== FUNÇÃO DE CAPTURA COMPLETA =====
 local function CapturePet(pet)
     if not pet then return false end
+    
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
     print("🎯 Capturando: " .. pet.Name)
-    TeleportTo(hrp.Position + Vector3.new(0, 3, 0))
-    local ok = ClickPet(pet)
-    task.wait(1)
-    return ok
+    
+    -- 1. Teleporta para perto do pet
+    local targetPos = hrp.Position + Vector3.new(0, 2, 0)
+    TeleportTo(targetPos)
+    
+    -- 2. Espera um pouco
+    task.wait(0.3)
+    
+    -- 3. Tenta clicar no pet
+    local success = false
+    
+    pcall(function()
+        -- Pega o mouse do jogador
+        local mouse = Player:GetMouse()
+        if not mouse then return end
+        
+        -- Pega a camera
+        local cam = workspace.CurrentCamera
+        if not cam then return end
+        
+        -- Converte posição 3D para tela
+        local screenPos, onScreen = cam:WorldToViewportPoint(hrp.Position)
+        if not onScreen then return end
+        
+        -- Move o mouse e clica
+        mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
+        task.wait(0.1)
+        mouse.Button1Click()
+        
+        success = true
+        print("🖱️ Clique executado em: " .. pet.Name)
+    end)
+    
+    -- 4. Espera a captura acontecer
+    task.wait(0.5)
+    
+    return success
+end
+
+-- ===== LEVAR PET PARA A BASE =====
+local function BringPetToBase(pet)
+    if not pet then return end
+    
+    local base = workspace:FindFirstChild("Base") or workspace:FindFirstChild("PlayerBase")
+    if not base then return end
+    
+    local hrp = pet:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        print("🏠 Levando " .. pet.Name .. " para a base...")
+        
+        -- Teleporta o pet para a base
+        local basePos = base.Position + Vector3.new(0, 2, 0)
+        pcall(function()
+            hrp.CFrame = CFrame.new(basePos)
+        end)
+        task.wait(0.3)
+    end
+    
+    -- Tenta soltar o pet na base
+    local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet")
+        or ReplicatedStorage:FindFirstChild("DropPet")
+        or ReplicatedStorage:FindFirstChild("StorePet")
+    
+    if releaseRemote then
+        pcall(function() 
+            releaseRemote:FireServer(pet) 
+            print("📦 Pet solto na base!")
+        end)
+        task.wait(0.3)
+    end
 end
 
 -- ===== SISTEMA ESP =====
@@ -125,6 +185,7 @@ local function CreateESP(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
+    -- Highlight verde
     local highlight = Instance.new("Highlight")
     highlight.Parent = pet
     highlight.FillColor = Color3.fromRGB(0, 255, 0)
@@ -134,6 +195,7 @@ local function CreateESP(pet)
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Enabled = true
     
+    -- Billboard com nome
     local billboard = Instance.new("BillboardGui")
     billboard.Parent = hrp
     billboard.Size = UDim2.new(0, 120, 0, 25)
@@ -457,11 +519,16 @@ local function CreateMenu()
                     end
                     
                     if target then
+                        -- CAPTURA COMPLETA AQUI!
                         local ok = CapturePet(target)
                         if ok then
                             config.petsCapturados[target] = true
                             print("✅ " .. target.Name .. " capturado!")
                             
+                            -- Tenta levar para a base
+                            BringPetToBase(target)
+                            
+                            -- Mostra contador
                             if countdownLabel then
                                 countdownLabel.Parent.Visible = true
                                 for i = config.countdownTime, 1, -1 do
@@ -471,6 +538,8 @@ local function CreateMenu()
                                 end
                                 countdownLabel.Parent.Visible = false
                             end
+                        else
+                            print("❌ Falha ao capturar " .. target.Name .. ", tentando próximo...")
                         end
                         task.wait(1)
                     else
@@ -579,11 +648,11 @@ end
 
 -- ===== INICIAR =====
 print("========================================")
-print("  ✧ SIX SEVEN - FINAL")
+print("  ✧ SIX SEVEN - CAPTURA COMPLETA")
 print("========================================")
-print("  ✅ Botões + e - para ajustar")
-print("  ✅ ESP destaca pets em movimento")
-print("  ✅ Tempo ajustável de 1 a 5 segundos")
+print("  ✅ Teleporta + Clica no pet")
+print("  ✅ Leva para a base")
+print("  ✅ Contador entre capturas")
 print("========================================")
 
 local success, err = pcall(CreateMenu)
