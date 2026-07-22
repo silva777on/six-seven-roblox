@@ -1,19 +1,31 @@
 --[[
-    SIX SEVEN - CLIQUE AUTOMÁTICO NA TELA
+    SIX SEVEN - CAPTURA COMPLETA COM LASSO
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - CLIQUE NA TELA...")
+print("🔄 CARREGANDO SIX SEVEN - LASSO COMPLETO...")
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+local Humanoid = Character and Character:FindFirstChild("Humanoid")
+
+-- ========================================
+-- CONFIGURAÇÕES
+-- ========================================
+local Config = {
+    Delay = 5.0,
+    TotalClicks = 50,      -- Quantos cliques para encher a barra
+    ClickSpeed = 0.02,
+    LassoDelay = 0.3
+}
 
 -- ========================================
 -- VARIÁVEIS
@@ -51,11 +63,10 @@ local function EncontrarPets()
 end
 
 -- ========================================
--- FUNÇÃO PARA CLICAR NA TELA (EM QUALQUER LUGAR)
+-- FUNÇÃO PARA CLICAR NA TELA
 -- ========================================
 local function ClicarNaTela()
     pcall(function()
-        -- Clica na posição atual do mouse
         VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
         task.wait(0.02)
         VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
@@ -63,20 +74,139 @@ local function ClicarNaTela()
 end
 
 -- ========================================
+-- FUNÇÃO PARA MOVER O MOUSE PARA UMA POSIÇÃO
+-- ========================================
+local function MoverMouse(x, y)
+    pcall(function()
+        VirtualInputManager:SendMouseMovement(x, y, Enum.VirtualKeyMode.Delta, game)
+    end)
+end
+
+-- ========================================
+-- FUNÇÃO PARA EQUIPAR O LASSO
+-- ========================================
+local function EquiparLasso()
+    print("🎯 Equipando lasso...")
+    
+    -- Tenta equipar do inventário
+    local backpack = Player:FindFirstChild("Backpack")
+    if backpack then
+        for _, item in pairs(backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                local nome = item.Name:lower()
+                if nome:find("laço") or nome:find("lasso") or nome:find("corda") or nome:find("capture") then
+                    if Humanoid then
+                        Humanoid:EquipTool(item)
+                        print("✅ Lasso equipado: " .. item.Name)
+                        task.wait(0.3)
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Tenta tecla 1
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.One, false, game)
+        task.wait(0.1)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+        print("✅ Tecla 1 pressionada")
+        return true
+    end)
+    
+    return false
+end
+
+-- ========================================
+-- FUNÇÃO PARA ATIVAR O LASSO (CLICAR NO LASSO)
+-- ========================================
+local function AtivarLasso()
+    print("🎯 Ativando lasso...")
+    
+    -- Clica no lasso (ferramenta ativa)
+    pcall(function()
+        local tool = Humanoid and Humanoid:FindFirstChild("ActiveTool")
+        if tool then
+            tool:Activate()
+            print("✅ Lasso ativado")
+            task.wait(0.3)
+            return true
+        end
+    end)
+    
+    -- Tenta clicar no centro da tela (onde fica o lasso)
+    local camera = Workspace.CurrentCamera
+    if camera then
+        local viewport = camera.ViewportSize
+        pcall(function()
+            MoverMouse(viewport.X/2, viewport.Y/2)
+            task.wait(0.1)
+            ClicarNaTela()
+            print("✅ Clicou no lasso")
+            task.wait(0.3)
+            return true
+        end)
+    end
+    
+    return false
+end
+
+-- ========================================
+-- FUNÇÃO PARA MIRAR E LANÇAR O LASSO
+-- ========================================
+local function MirarELancar(pet)
+    if not pet then return false end
+    local hrp = pet:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    print("🎯 Mirando e lançando lasso em: " .. pet.Name)
+    
+    -- 1. Move o mouse para o pet
+    local camera = Workspace.CurrentCamera
+    if not camera then return false end
+    
+    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+    if not onScreen then
+        -- Se o pet não está na tela, teleporta mais perto
+        if RootPart then
+            pcall(function()
+                RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 0))
+            end)
+            task.wait(0.3)
+        end
+        -- Tenta novamente
+        pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+        if not onScreen then return false end
+    end
+    
+    -- 2. Move o mouse para a posição do pet (a cruz vai seguir)
+    print("  📍 Mirando no pet...")
+    MoverMouse(pos.X, pos.Y)
+    task.wait(0.2)
+    
+    -- 3. Clica para lançar o lasso
+    print("  🔥 Lançando lasso!")
+    ClicarNaTela()
+    task.wait(0.5)
+    
+    return true
+end
+
+-- ========================================
 -- FUNÇÃO PARA CLICAR REPETIDAMENTE (ENCHE A BARRA)
 -- ========================================
 local function ClicarRepetidamente(vezes)
-    print("🖱️ Clicando " .. vezes .. " vezes na tela...")
+    print("🖱️ Clicando " .. vezes .. " vezes para encher a barra...")
     
     for i = 1, vezes do
         ClicarNaTela()
         
-        -- Mostra progresso a cada 10 cliques
         if i % 10 == 0 then
             print("  📊 Progresso: " .. i .. "/" .. vezes)
         end
         
-        task.wait(0.02) -- Velocidade dos cliques
+        task.wait(Config.ClickSpeed)
     end
     
     print("✅ " .. vezes .. " cliques concluídos!")
@@ -84,7 +214,7 @@ local function ClicarRepetidamente(vezes)
 end
 
 -- ========================================
--- FUNÇÃO PARA CAPTURAR PET
+-- FUNÇÃO PRINCIPAL DE CAPTURA
 -- ========================================
 local function CapturarPet(pet)
     if processando then return false end
@@ -101,7 +231,7 @@ local function CapturarPet(pet)
     print("\n🎯 CAPTURANDO: " .. pet.Name)
     status.Text = "🎯 Capturando: " .. pet.Name
     
-    -- 1. Teleporta para o pet
+    -- 1. Teleporta para perto do pet
     if RootPart then
         pcall(function()
             RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 0))
@@ -109,51 +239,32 @@ local function CapturarPet(pet)
         task.wait(0.3)
     end
     
-    -- 2. CLICA NO PET (para abrir a UI de captura)
-    print("🖱️ Clicando no pet para abrir a UI...")
-    local camera = Workspace.CurrentCamera
-    if camera then
-        local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-        if onScreen then
-            pcall(function()
-                -- Move o mouse para o pet
-                VirtualInputManager:SendMouseMovement(pos.X, pos.Y, Enum.VirtualKeyMode.Delta, game)
-                task.wait(0.1)
-                
-                -- Clica no pet
-                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-                task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-                print("  ✅ Clique no pet enviado")
-            end)
-        else
-            -- Se o pet não está na tela, teleporta mais perto
-            pcall(function()
-                RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 0))
-            end)
-            task.wait(0.3)
-            
-            -- Tenta clicar novamente
-            local newPos, newOnScreen = camera:WorldToViewportPoint(hrp.Position)
-            if newOnScreen then
-                VirtualInputManager:SendMouseMovement(newPos.X, newPos.Y, Enum.VirtualKeyMode.Delta, game)
-                task.wait(0.1)
-                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-                task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-            end
-        end
+    -- 2. Equipa o lasso
+    EquiparLasso()
+    task.wait(0.3)
+    
+    -- 3. Ativa o lasso (clica nele)
+    AtivarLasso()
+    task.wait(0.3)
+    
+    -- 4. Mira e lança o lasso no pet
+    local lancou = MirarELancar(pet)
+    if not lancou then
+        print("❌ Falhou ao lançar lasso")
+        processando = false
+        status.Text = "❌ Falhou ao lançar"
+        return false
     end
     
     task.wait(0.5)
     
-    -- 3. CLICA REPETIDAMENTE NA TELA (ENCHE A BARRA!)
+    -- 5. CLICA REPETIDAMENTE PARA ENCHER A BARRA!
     print("🔄 Enchendo a barra de captura...")
-    ClicarRepetidamente(40) -- 40 cliques para encher a barra
+    ClicarRepetidamente(Config.TotalClicks)
     
     task.wait(0.5)
     
-    -- 4. Verifica se capturou
+    -- 6. Verifica se capturou
     local pasta = Player:FindFirstChild("Pets")
     if pasta then
         for _, p in pairs(pasta:GetChildren()) do
@@ -168,7 +279,7 @@ local function CapturarPet(pet)
         end
     end
     
-    -- Verifica se o pet foi destruído (capturado)
+    -- Verifica se o pet foi destruído
     if not pet.Parent then
         capturados[pet] = true
         totalCapturados = totalCapturados + 1
@@ -196,14 +307,6 @@ local function LevarPetBase(pet)
     if RootPart then
         pcall(function()
             RootPart.CFrame = CFrame.new(base.Position + Vector3.new(0, 2, 0))
-        end)
-        task.wait(0.3)
-    end
-    
-    local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        pcall(function()
-            hrp.CFrame = CFrame.new(base.Position + Vector3.new(0, 2, 0))
         end)
         task.wait(0.3)
     end
@@ -239,7 +342,7 @@ local function LoopAuto()
                 if sucesso then
                     LevarPetBase(alvo)
                 end
-                task.wait(5) -- Delay entre capturas
+                task.wait(Config.Delay)
             else
                 status.Text = "⏳ Procurando pets..."
                 task.wait(1)
@@ -293,8 +396,8 @@ local function CriarMenu()
     
     local frame = Instance.new("Frame")
     frame.Parent = gui
-    frame.Size = UDim2.new(0, 260, 0, 200)
-    frame.Position = UDim2.new(0.5, -130, 0.5, -100)
+    frame.Size = UDim2.new(0, 260, 0, 220)
+    frame.Position = UDim2.new(0.5, -130, 0.5, -110)
     frame.BackgroundColor3 = Color3.fromRGB(10, 10, 30)
     frame.BackgroundTransparency = 0.1
     frame.Active = true
@@ -495,12 +598,17 @@ end)
 Player.CharacterAdded:Connect(function(newChar)
     Character = newChar
     RootPart = newChar:FindFirstChild("HumanoidRootPart")
+    Humanoid = newChar:FindFirstChild("Humanoid")
     print("🔄 Respawnou!")
 end)
 
 print("========================================")
-print("  ✅ SCRIPT PRONTO!")
-print("  📌 ESP: Mostra os pets")
-print("  📌 AUTO: Clica no pet → Clica na tela 40x")
-print("  📌 A barra vai encher sozinha!")
+print("  ✅ SCRIPT COMPLETO!")
+print("  📌 PASSO A PASSO:")
+print("  1. Teleporta para o pet")
+print("  2. Equipa o lasso")
+print("  3. Clica no lasso (ativa)")
+print("  4. Mira no pet (cruz)")
+print("  5. Lança o lasso")
+print("  6. Clica 50x para encher a barra")
 print("========================================")
