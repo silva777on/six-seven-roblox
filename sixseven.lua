@@ -1,16 +1,15 @@
 --[[
-    SIX SEVEN - COMPLETO (Versão Compacta)
+    SIX SEVEN - VERSÃO SIMPLES E FUNCIONAL
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - COMPACTO...")
+print("🔄 CARREGANDO SIX SEVEN - SIMPLES...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -31,14 +30,8 @@ local Settings = {
         Color = Color3.fromRGB(0, 255, 0),
         MaxDistance = 200
     },
-    Speed = {
-        Value = 16,
-        Max = 100
-    },
-    Jump = {
-        Value = 50,
-        Max = 100
-    }
+    Speed = 16,
+    Jump = 50
 }
 
 -- ========================================
@@ -50,7 +43,6 @@ local autoCaptureRunning = false
 local capturedPets = {}
 local espObjects = {}
 local petPositions = {}
-local petList = {}
 local menuAberto = true
 
 -- ========================================
@@ -103,13 +95,13 @@ end
 -- ========================================
 local function AtualizarVelocidade()
     if not Humanoid then return end
-    local speed = 16 + (Settings.Speed.Value / 100) * 84
+    local speed = 16 + (Settings.Speed / 100) * 84
     Humanoid.WalkSpeed = speed
 end
 
 local function AtualizarJump()
     if not Humanoid then return end
-    local jump = 50 + (Settings.Jump.Value / 100) * 50
+    local jump = 50 + (Settings.Jump / 100) * 50
     Humanoid.JumpPower = jump
 end
 
@@ -160,6 +152,7 @@ local function ClickOnPet(pet)
             mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
             task.wait(0.1)
             mouse.Button1Click()
+            print("🖱️ Clique em: " .. pet.Name)
             return true
         end
     end)
@@ -174,6 +167,8 @@ local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
+    
+    print("🎯 Capturando: " .. pet.Name)
     
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     SmoothTeleport(targetPos)
@@ -209,6 +204,7 @@ local function BringPetToBase(pet)
     if releaseRemote then
         pcall(function() 
             releaseRemote:FireServer(pet) 
+            print("📦 Pet solto na base!")
         end)
         task.wait(0.3)
     end
@@ -310,6 +306,8 @@ local function CreateESP(pet)
         Label = label,
         DistLabel = distLabel
     }
+    
+    print("✅ ESP criado para: " .. pet.Name)
 end
 
 local function RemoveESP(pet)
@@ -330,7 +328,6 @@ local function UpdateESP()
     end
     
     local pets = FindAllPets()
-    petList = pets
     
     for _, pet in pairs(pets) do
         if pet and pet:IsA("Model") and pet:FindFirstChild("HumanoidRootPart") then
@@ -378,6 +375,7 @@ local function StartMonitoring()
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
                 local name = obj.Name:lower()
                 if not name:find("npc") and not name:find("humano") and not name:find("personagem") then
+                    print("🔍 Novo pet: " .. obj.Name)
                     if espActive then
                         task.wait(0.1)
                         UpdateESP()
@@ -389,133 +387,26 @@ local function StartMonitoring()
 end
 
 -- ========================================
--- CRIAR SLIDER COMPACTO
--- ========================================
-local function CreateSlider(parent, labelText, min, max, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Parent = parent
-    frame.Size = UDim2.new(1, 0, 0, 35)
-    frame.BackgroundTransparency = 1
-    
-    local label = Instance.new("TextLabel")
-    label.Parent = frame
-    label.Size = UDim2.new(0.5, 0, 0, 18)
-    label.Position = UDim2.new(0, 0, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = labelText
-    label.TextColor3 = Color3.fromRGB(200, 200, 255)
-    label.TextSize = 12
-    label.Font = Enum.Font.GothamBold
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local valueLabel = Instance.new("TextLabel")
-    valueLabel.Parent = frame
-    valueLabel.Size = UDim2.new(0.2, 0, 0, 18)
-    valueLabel.Position = UDim2.new(0.8, 0, 0, 0)
-    valueLabel.BackgroundTransparency = 1
-    valueLabel.Text = tostring(default)
-    valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    valueLabel.TextSize = 12
-    valueLabel.Font = Enum.Font.GothamBold
-    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
-    
-    local sliderBg = Instance.new("Frame")
-    sliderBg.Parent = frame
-    sliderBg.Size = UDim2.new(1, 0, 0, 6)
-    sliderBg.Position = UDim2.new(0, 0, 0, 22)
-    sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
-    sliderBg.BorderSizePixel = 0
-    
-    local sliderCorner = Instance.new("UICorner")
-    sliderCorner.Parent = sliderBg
-    sliderCorner.CornerRadius = UDim.new(1, 0)
-    
-    local fill = Instance.new("Frame")
-    fill.Parent = sliderBg
-    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-    fill.BorderSizePixel = 0
-    
-    local fillCorner = Instance.new("UICorner")
-    fillCorner.Parent = fill
-    fillCorner.CornerRadius = UDim.new(1, 0)
-    
-    local sliderBtn = Instance.new("TextButton")
-    sliderBtn.Parent = sliderBg
-    sliderBtn.Size = UDim2.new(0, 14, 0, 14)
-    sliderBtn.Position = UDim2.new((default - min) / (max - min), -7, 0.5, -7)
-    sliderBtn.BackgroundColor3 = Color3.fromRGB(180, 130, 255)
-    sliderBtn.Text = ""
-    sliderBtn.BorderSizePixel = 0
-    sliderBtn.AutoButtonColor = false
-    
-    local sliderCorner2 = Instance.new("UICorner")
-    sliderCorner2.Parent = sliderBtn
-    sliderCorner2.CornerRadius = UDim.new(1, 0)
-    
-    local dragging = false
-    
-    local function UpdateSlider(input)
-        local pos = input.Position.X - sliderBg.AbsolutePosition.X
-        local width = sliderBg.AbsoluteSize.X
-        if width <= 0 then return end
-        local percent = math.clamp(pos / width, 0, 1)
-        local value = math.round(min + percent * (max - min))
-        
-        fill.Size = UDim2.new(percent, 0, 1, 0)
-        sliderBtn.Position = UDim2.new(percent, -7, 0.5, -7)
-        valueLabel.Text = tostring(value)
-        
-        callback(value)
-    end
-    
-    sliderBtn.MouseButton1Down:Connect(function()
-        dragging = true
-    end)
-    
-    sliderBg.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            UpdateSlider(input)
-            dragging = true
-        end
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            UpdateSlider(input)
-        end
-    end)
-    
-    return frame
-end
-
--- ========================================
--- MENU COMPACTO
+-- MENU SIMPLES (COM BOTÕES GRANDES)
 -- ========================================
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SixSevenGUI"
     screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Frame principal (menor e com transparência)
+    -- Frame principal
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 230, 0, 280)
-    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -140)
+    mainFrame.Size = UDim2.new(0, 200, 0, 250)
+    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -125)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
-    mainFrame.BackgroundTransparency = 0.15
+    mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
     mainFrame.Draggable = true
     mainFrame.Visible = true
-    mainFrame.ClipsDescendants = true
 
     local corner = Instance.new("UICorner")
     corner.Parent = mainFrame
@@ -530,44 +421,26 @@ local function CreateMenu()
     -- Título
     local title = Instance.new("TextLabel")
     title.Parent = mainFrame
-    title.Size = UDim2.new(1, -60, 0, 32)
-    title.Position = UDim2.new(0, 10, 0, 0)
+    title.Size = UDim2.new(1, -50, 0, 30)
+    title.Position = UDim2.new(0, 8, 0, 0)
     title.BackgroundTransparency = 1
     title.Text = "✧ SIX SEVEN"
     title.TextColor3 = Color3.fromRGB(190, 160, 255)
-    title.TextSize = 16
+    title.TextSize = 15
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- Botão Minimizar
-    local minBtn = Instance.new("TextButton")
-    minBtn.Parent = mainFrame
-    minBtn.Size = UDim2.new(0, 24, 0, 24)
-    minBtn.Position = UDim2.new(1, -54, 0, 4)
-    minBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    minBtn.Text = "─"
-    minBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    minBtn.TextSize = 16
-    minBtn.Font = Enum.Font.GothamBold
-    minBtn.BorderSizePixel = 0
-    minBtn.AutoButtonColor = false
-    
-    local minCorner = Instance.new("UICorner")
-    minCorner.Parent = minBtn
-    minCorner.CornerRadius = UDim.new(0, 5)
-
-    -- Botão Fechar
+    -- Fechar
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
-    closeBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeBtn.Position = UDim2.new(1, -28, 0, 4)
+    closeBtn.Size = UDim2.new(0, 22, 0, 22)
+    closeBtn.Position = UDim2.new(1, -26, 0, 4)
     closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
     closeBtn.Text = "✕"
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.TextSize = 12
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.BorderSizePixel = 0
-    closeBtn.AutoButtonColor = false
     
     local closeCorner = Instance.new("UICorner")
     closeCorner.Parent = closeBtn
@@ -577,85 +450,164 @@ local function CreateMenu()
     local sep = Instance.new("Frame")
     sep.Parent = mainFrame
     sep.Size = UDim2.new(0.9, 0, 0, 1)
-    sep.Position = UDim2.new(0.05, 0, 0.12, 0)
+    sep.Position = UDim2.new(0.05, 0, 0.13, 0)
     sep.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     sep.BackgroundTransparency = 0.5
-    sep.BorderSizePixel = 0
 
-    -- Container dos conteúdos
-    local contentContainer = Instance.new("ScrollingFrame")
-    contentContainer.Parent = mainFrame
-    contentContainer.Size = UDim2.new(1, -10, 1, -50)
-    contentContainer.Position = UDim2.new(0, 5, 0, 38)
-    contentContainer.BackgroundTransparency = 1
-    contentContainer.BorderSizePixel = 0
-    contentContainer.ScrollBarThickness = 3
-    contentContainer.ScrollBarImageColor3 = Color3.fromRGB(138, 43, 226)
-    contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-    contentContainer.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
+    -- Container dos botões
+    local container = Instance.new("Frame")
+    container.Parent = mainFrame
+    container.Size = UDim2.new(0.9, 0, 0.75, 0)
+    container.Position = UDim2.new(0.05, 0, 0.17, 0)
+    container.BackgroundTransparency = 1
 
-    local content = Instance.new("Frame")
-    content.Parent = contentContainer
-    content.Size = UDim2.new(1, 0, 0, 0)
-    content.BackgroundTransparency = 1
-    content.AutomaticSize = Enum.AutomaticSize.Y
-
-    local contentLayout = Instance.new("UIListLayout")
-    contentLayout.Parent = content
-    contentLayout.Padding = UDim.new(0, 5)
-    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    local layout = Instance.new("UIListLayout")
+    layout.Parent = container
+    layout.Padding = UDim.new(0, 6)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
 
     -- ========================================
-    -- SLIDERS
+    -- BOTÃO VELOCIDADE
     -- ========================================
-    CreateSlider(content, "🏃 Velocidade", 0, 100, 16, function(value)
-        Settings.Speed.Value = value
+    local speedFrame = Instance.new("Frame")
+    speedFrame.Parent = container
+    speedFrame.Size = UDim2.new(1, 0, 0, 30)
+    speedFrame.BackgroundTransparency = 1
+
+    local speedLabel = Instance.new("TextLabel")
+    speedLabel.Parent = speedFrame
+    speedLabel.Size = UDim2.new(0.6, 0, 1, 0)
+    speedLabel.BackgroundTransparency = 1
+    speedLabel.Text = "🏃 Velocidade: 16"
+    speedLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    speedLabel.TextSize = 12
+    speedLabel.Font = Enum.Font.GothamBold
+    speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local speedBtn = Instance.new("TextButton")
+    speedBtn.Parent = speedFrame
+    speedBtn.Size = UDim2.new(0.35, 0, 1, 0)
+    speedBtn.Position = UDim2.new(0.65, 0, 0, 0)
+    speedBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    speedBtn.Text = "+"
+    speedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    speedBtn.TextSize = 16
+    speedBtn.Font = Enum.Font.GothamBold
+    speedBtn.BorderSizePixel = 0
+    
+    local speedCorner = Instance.new("UICorner")
+    speedCorner.Parent = speedBtn
+    speedCorner.CornerRadius = UDim.new(0, 5)
+
+    speedBtn.MouseButton1Click:Connect(function()
+        Settings.Speed = math.min(Settings.Speed + 5, 100)
+        speedLabel.Text = "🏃 Velocidade: " .. Settings.Speed
         AtualizarVelocidade()
     end)
 
-    CreateSlider(content, "🦘 Pulo", 0, 100, 50, function(value)
-        Settings.Jump.Value = value
+    -- Botão diminuir velocidade
+    local speedBtn2 = Instance.new("TextButton")
+    speedBtn2.Parent = speedFrame
+    speedBtn2.Size = UDim2.new(0.2, 0, 1, 0)
+    speedBtn2.Position = UDim2.new(0.45, 0, 0, 0)
+    speedBtn2.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    speedBtn2.Text = "-"
+    speedBtn2.TextColor3 = Color3.fromRGB(255, 255, 255)
+    speedBtn2.TextSize = 16
+    speedBtn2.Font = Enum.Font.GothamBold
+    speedBtn2.BorderSizePixel = 0
+    
+    local speedCorner2 = Instance.new("UICorner")
+    speedCorner2.Parent = speedBtn2
+    speedCorner2.CornerRadius = UDim.new(0, 5)
+
+    speedBtn2.MouseButton1Click:Connect(function()
+        Settings.Speed = math.max(Settings.Speed - 5, 0)
+        speedLabel.Text = "🏃 Velocidade: " .. Settings.Speed
+        AtualizarVelocidade()
+    end)
+
+    -- ========================================
+    -- BOTÃO JUMP
+    -- ========================================
+    local jumpFrame = Instance.new("Frame")
+    jumpFrame.Parent = container
+    jumpFrame.Size = UDim2.new(1, 0, 0, 30)
+    jumpFrame.BackgroundTransparency = 1
+
+    local jumpLabel = Instance.new("TextLabel")
+    jumpLabel.Parent = jumpFrame
+    jumpLabel.Size = UDim2.new(0.6, 0, 1, 0)
+    jumpLabel.BackgroundTransparency = 1
+    jumpLabel.Text = "🦘 Pulo: 50"
+    jumpLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    jumpLabel.TextSize = 12
+    jumpLabel.Font = Enum.Font.GothamBold
+    jumpLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local jumpBtn = Instance.new("TextButton")
+    jumpBtn.Parent = jumpFrame
+    jumpBtn.Size = UDim2.new(0.35, 0, 1, 0)
+    jumpBtn.Position = UDim2.new(0.65, 0, 0, 0)
+    jumpBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    jumpBtn.Text = "+"
+    jumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    jumpBtn.TextSize = 16
+    jumpBtn.Font = Enum.Font.GothamBold
+    jumpBtn.BorderSizePixel = 0
+    
+    local jumpCorner = Instance.new("UICorner")
+    jumpCorner.Parent = jumpBtn
+    jumpCorner.CornerRadius = UDim.new(0, 5)
+
+    jumpBtn.MouseButton1Click:Connect(function()
+        Settings.Jump = math.min(Settings.Jump + 5, 100)
+        jumpLabel.Text = "🦘 Pulo: " .. Settings.Jump
+        AtualizarJump()
+    end)
+
+    -- Botão diminuir jump
+    local jumpBtn2 = Instance.new("TextButton")
+    jumpBtn2.Parent = jumpFrame
+    jumpBtn2.Size = UDim2.new(0.2, 0, 1, 0)
+    jumpBtn2.Position = UDim2.new(0.45, 0, 0, 0)
+    jumpBtn2.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    jumpBtn2.Text = "-"
+    jumpBtn2.TextColor3 = Color3.fromRGB(255, 255, 255)
+    jumpBtn2.TextSize = 16
+    jumpBtn2.Font = Enum.Font.GothamBold
+    jumpBtn2.BorderSizePixel = 0
+    
+    local jumpCorner2 = Instance.new("UICorner")
+    jumpCorner2.Parent = jumpBtn2
+    jumpCorner2.CornerRadius = UDim.new(0, 5)
+
+    jumpBtn2.MouseButton1Click:Connect(function()
+        Settings.Jump = math.max(Settings.Jump - 5, 0)
+        jumpLabel.Text = "🦘 Pulo: " .. Settings.Jump
         AtualizarJump()
     end)
 
     -- ========================================
-    -- BOTÕES (linha dupla)
+    -- BOTÃO ESP
     -- ========================================
-    -- ESP
-    local espFrame = Instance.new("Frame")
-    espFrame.Parent = content
-    espFrame.Size = UDim2.new(1, 0, 0, 30)
-    espFrame.BackgroundTransparency = 1
-
-    local espLabel = Instance.new("TextLabel")
-    espLabel.Parent = espFrame
-    espLabel.Size = UDim2.new(0.5, 0, 1, 0)
-    espLabel.BackgroundTransparency = 1
-    espLabel.Text = "🔍 ESP"
-    espLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-    espLabel.TextSize = 13
-    espLabel.Font = Enum.Font.GothamBold
-    espLabel.TextXAlignment = Enum.TextXAlignment.Left
-
     local espBtn = Instance.new("TextButton")
-    espBtn.Parent = espFrame
-    espBtn.Size = UDim2.new(0, 70, 0, 26)
-    espBtn.Position = UDim2.new(0.7, 0, 0.5, -13)
+    espBtn.Parent = container
+    espBtn.Size = UDim2.new(1, 0, 0, 28)
     espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    espBtn.Text = "🔴 OFF"
+    espBtn.Text = "🔴 ESP: OFF"
     espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    espBtn.TextSize = 12
+    espBtn.TextSize = 13
     espBtn.Font = Enum.Font.GothamBold
     espBtn.BorderSizePixel = 0
-    espBtn.AutoButtonColor = false
     
     local espCorner = Instance.new("UICorner")
     espCorner.Parent = espBtn
-    espCorner.CornerRadius = UDim.new(0, 6)
+    espCorner.CornerRadius = UDim.new(0, 5)
 
     espBtn.MouseButton1Click:Connect(function()
         espActive = not espActive
-        espBtn.Text = espActive and "🟢 ON" or "🔴 OFF"
+        espBtn.Text = espActive and "🟢 ESP: ON" or "🔴 ESP: OFF"
         espBtn.BackgroundColor3 = espActive and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 120)
         if espActive then
             UpdateESP()
@@ -667,41 +619,26 @@ local function CreateMenu()
         end
     end)
 
-    -- AUTO
-    local autoFrame = Instance.new("Frame")
-    autoFrame.Parent = content
-    autoFrame.Size = UDim2.new(1, 0, 0, 30)
-    autoFrame.BackgroundTransparency = 1
-
-    local autoLabel = Instance.new("TextLabel")
-    autoLabel.Parent = autoFrame
-    autoLabel.Size = UDim2.new(0.5, 0, 1, 0)
-    autoLabel.BackgroundTransparency = 1
-    autoLabel.Text = "🎯 Auto Capture"
-    autoLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-    autoLabel.TextSize = 13
-    autoLabel.Font = Enum.Font.GothamBold
-    autoLabel.TextXAlignment = Enum.TextXAlignment.Left
-
+    -- ========================================
+    -- BOTÃO AUTO
+    -- ========================================
     local autoBtn = Instance.new("TextButton")
-    autoBtn.Parent = autoFrame
-    autoBtn.Size = UDim2.new(0, 70, 0, 26)
-    autoBtn.Position = UDim2.new(0.7, 0, 0.5, -13)
+    autoBtn.Parent = container
+    autoBtn.Size = UDim2.new(1, 0, 0, 28)
     autoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    autoBtn.Text = "🔴 OFF"
+    autoBtn.Text = "🔴 AUTO: OFF"
     autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    autoBtn.TextSize = 12
+    autoBtn.TextSize = 13
     autoBtn.Font = Enum.Font.GothamBold
     autoBtn.BorderSizePixel = 0
-    autoBtn.AutoButtonColor = false
     
     local autoCorner = Instance.new("UICorner")
     autoCorner.Parent = autoBtn
-    autoCorner.CornerRadius = UDim.new(0, 6)
+    autoCorner.CornerRadius = UDim.new(0, 5)
 
     autoBtn.MouseButton1Click:Connect(function()
         autoCapture = not autoCapture
-        autoBtn.Text = autoCapture and "🟢 ON" or "🔴 OFF"
+        autoBtn.Text = autoCapture and "🟢 AUTO: ON" or "🔴 AUTO: OFF"
         autoBtn.BackgroundColor3 = autoCapture and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 120)
         if autoCapture then
             if not autoCaptureRunning then
@@ -717,8 +654,9 @@ local function CreateMenu()
     -- STATUS
     -- ========================================
     local statusLabel = Instance.new("TextLabel")
-    statusLabel.Parent = content
-    statusLabel.Size = UDim2.new(1, 0, 0, 20)
+    statusLabel.Parent = mainFrame
+    statusLabel.Size = UDim2.new(0.9, 0, 0, 18)
+    statusLabel.Position = UDim2.new(0.05, 0, 0.9, 0)
     statusLabel.BackgroundTransparency = 1
     statusLabel.Text = "📊 Pronto"
     statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
@@ -737,7 +675,6 @@ local function CreateMenu()
     floatBtn.Font = Enum.Font.GothamBold
     floatBtn.BorderSizePixel = 0
     floatBtn.Visible = false
-    floatBtn.AutoButtonColor = false
 
     local floatCorner = Instance.new("UICorner")
     floatCorner.Parent = floatBtn
@@ -746,20 +683,15 @@ local function CreateMenu()
     local function OpenMenu()
         mainFrame.Visible = true
         floatBtn.Visible = false
-        menuAberto = true
     end
 
     local function CloseMenu()
         mainFrame.Visible = false
         floatBtn.Visible = true
-        menuAberto = false
     end
 
-    minBtn.MouseButton1Click:Connect(CloseMenu)
+    closeBtn.MouseButton1Click:Connect(CloseMenu)
     floatBtn.MouseButton1Click:Connect(OpenMenu)
-    closeBtn.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
-    end)
 
     -- Atualiza status
     task.spawn(function()
@@ -778,11 +710,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - COMPACTO")
-print("========================================")
-print("  📌 Menu menor e no canto")
-print("  📌 Velocidade e Pulo")
-print("  📌 ESP e Auto Capture")
+print("  ✧ SIX SEVEN - SIMPLES")
 print("========================================")
 
 pcall(CreateMenu)
@@ -806,4 +734,6 @@ end)
 
 print("========================================")
 print("  ✅ PRONTO!")
+print("  📌 Botões + e - para Velocidade e Pulo")
+print("  📌 ESP e Auto Capture")
 print("========================================")
