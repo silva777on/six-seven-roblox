@@ -1,4 +1,4 @@
--- SIX SEVEN - VERSÃO FINAL COM CAPTURA COMPLETA
+-- SIX SEVEN - VERSÃO COM LASSO
 print("🚀 INICIANDO SIX SEVEN...")
 
 -- ===== SERVIÇOS =====
@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -25,7 +26,7 @@ local config = {
 local espObjects = {}
 local petPositions = {}
 
--- ===== FUNÇÃO PARA ENCONTRAR PETS (SÓ OS QUE SE MOVEM) =====
+-- ===== FUNÇÃO PARA ENCONTRAR PETS =====
 local function FindPets()
     local pets = {}
     for _, obj in pairs(workspace:GetDescendants()) do
@@ -79,7 +80,6 @@ local function TeleportTo(targetPos)
     local currentPos = RootPart.Position
     local dist = (currentPos - targetPos).Magnitude
     
-    -- Teleporte suave se estiver longe
     if dist > 5 then
         local steps = math.min(math.floor(dist / 3), 5)
         for i = 1, steps do
@@ -92,14 +92,64 @@ local function TeleportTo(targetPos)
         end
     end
     
-    -- Teleporte final
     pcall(function()
         RootPart.CFrame = CFrame.new(targetPos)
     end)
     task.wait(0.1)
 end
 
--- ===== FUNÇÃO DE CAPTURA COMPLETA =====
+-- ===== FUNÇÃO PARA EQUIPAR LASSO =====
+local function EquipLasso()
+    print("🔍 Procurando lasso...")
+    
+    -- Procura o lasso no inventário do jogador
+    local backpack = Player:FindFirstChild("Backpack")
+    local starterGear = Player:FindFirstChild("StarterGear")
+    
+    local lasso = nil
+    
+    -- Procura na mochila
+    if backpack then
+        for _, item in pairs(backpack:GetChildren()) do
+            local name = item.Name:lower()
+            if name:find("lasso") or name:find("laço") or name:find("corda") or name:find("rope") then
+                lasso = item
+                break
+            end
+        end
+    end
+    
+    -- Se não achou, procura no StarterGear
+    if not lasso and starterGear then
+        for _, item in pairs(starterGear:GetChildren()) do
+            local name = item.Name:lower()
+            if name:find("lasso") or name:find("laço") or name:find("corda") or name:find("rope") then
+                lasso = item
+                break
+            end
+        end
+    end
+    
+    -- Se achou, equipa
+    if lasso then
+        print("✅ Lasso encontrado: " .. lasso.Name)
+        pcall(function()
+            -- Tenta equipar via ferramenta
+            if lasso:IsA("Tool") then
+                lasso.Parent = Character
+                print("✅ Lasso equipado!")
+                task.wait(0.3)
+                return true
+            end
+        end)
+    else
+        print("⚠️ Lasso não encontrado! Tentando capturar sem ele...")
+    end
+    
+    return false
+end
+
+-- ===== FUNÇÃO DE CAPTURA COM LASSO =====
 local function CapturePet(pet)
     if not pet then return false end
     
@@ -108,22 +158,22 @@ local function CapturePet(pet)
     
     print("🎯 Capturando: " .. pet.Name)
     
-    -- 1. Teleporta para perto do pet
-    local targetPos = hrp.Position + Vector3.new(0, 2, 0)
-    TeleportTo(targetPos)
-    
-    -- 2. Espera um pouco
+    -- 1. Equipa o lasso
+    EquipLasso()
     task.wait(0.3)
     
-    -- 3. Tenta clicar no pet
+    -- 2. Teleporta para perto do pet
+    local targetPos = hrp.Position + Vector3.new(0, 2, 0)
+    TeleportTo(targetPos)
+    task.wait(0.3)
+    
+    -- 3. Tenta capturar com o lasso
     local success = false
     
     pcall(function()
-        -- Pega o mouse do jogador
         local mouse = Player:GetMouse()
         if not mouse then return end
         
-        -- Pega a camera
         local cam = workspace.CurrentCamera
         if not cam then return end
         
@@ -131,17 +181,17 @@ local function CapturePet(pet)
         local screenPos, onScreen = cam:WorldToViewportPoint(hrp.Position)
         if not onScreen then return end
         
-        -- Move o mouse e clica
+        -- Move o mouse e clica (usa o lasso)
         mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
-        task.wait(0.1)
+        task.wait(0.2)
         mouse.Button1Click()
         
         success = true
-        print("🖱️ Clique executado em: " .. pet.Name)
+        print("🖱️ Lasso usado em: " .. pet.Name)
     end)
     
-    -- 4. Espera a captura acontecer
-    task.wait(0.5)
+    -- 4. Espera a captura
+    task.wait(1.5)
     
     return success
 end
@@ -156,8 +206,6 @@ local function BringPetToBase(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if hrp then
         print("🏠 Levando " .. pet.Name .. " para a base...")
-        
-        -- Teleporta o pet para a base
         local basePos = base.Position + Vector3.new(0, 2, 0)
         pcall(function()
             hrp.CFrame = CFrame.new(basePos)
@@ -169,6 +217,7 @@ local function BringPetToBase(pet)
     local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet")
         or ReplicatedStorage:FindFirstChild("DropPet")
         or ReplicatedStorage:FindFirstChild("StorePet")
+        or ReplicatedStorage:FindFirstChild("DepositPet")
     
     if releaseRemote then
         pcall(function() 
@@ -185,7 +234,6 @@ local function CreateESP(pet)
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    -- Highlight verde
     local highlight = Instance.new("Highlight")
     highlight.Parent = pet
     highlight.FillColor = Color3.fromRGB(0, 255, 0)
@@ -195,7 +243,6 @@ local function CreateESP(pet)
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Enabled = true
     
-    -- Billboard com nome
     local billboard = Instance.new("BillboardGui")
     billboard.Parent = hrp
     billboard.Size = UDim2.new(0, 120, 0, 25)
@@ -255,7 +302,7 @@ local function UpdateESP()
     end
 end
 
--- ===== CRIAR MENU COM + E - =====
+-- ===== CRIAR MENU =====
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SixSeven"
@@ -648,11 +695,11 @@ end
 
 -- ===== INICIAR =====
 print("========================================")
-print("  ✧ SIX SEVEN - CAPTURA COMPLETA")
+print("  ✧ SIX SEVEN - COM LASSO")
 print("========================================")
-print("  ✅ Teleporta + Clica no pet")
+print("  ✅ Equipa o lasso automaticamente")
+print("  ✅ Teleporta + Usa lasso no pet")
 print("  ✅ Leva para a base")
-print("  ✅ Contador entre capturas")
 print("========================================")
 
 local success, err = pcall(CreateMenu)
