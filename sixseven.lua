@@ -1,9 +1,12 @@
 --[[
-    SIX SEVEN - CAPTURA COM REMOTES (CORRIGIDO)
+    SIX SEVEN - VERSÃO FINAL (MISTURADA)
     Game: [🍎] Capture e Domestique!
+    - ESP funciona
+    - Teleporte funciona
+    - Captura com barrinha
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - VERSÃO REMOTE...")
+print("🔄 CARREGANDO SIX SEVEN - VERSÃO FINAL...")
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -24,20 +27,19 @@ local Config = {
     Delay = 5.0,
     TotalClicks = 80,
     ClickSpeed = 0.015,
-    TeleportDelay = 0.3,
 }
 
 -- ========================================
 -- VARIÁVEIS
 -- ========================================
-local autoAtivo = false
 local espAtivo = false
+local autoAtivo = false
 local processando = false
 local capturados = {}
 local totalCapturados = 0
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR PETS
+-- FUNÇÃO PARA ENCONTRAR PETS (MELHORADA)
 -- ========================================
 local function EncontrarPets()
     local pets = {}
@@ -48,6 +50,7 @@ local function EncontrarPets()
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             if obj ~= char and not Players:GetPlayerFromCharacter(obj) then
                 local nome = obj.Name:lower()
+                -- Filtra apenas pets válidos
                 if not nome:find("base") and not nome:find("floor") and not nome:find("wall") then
                     if not nome:find("npc") and not nome:find("humano") and not nome:find("player") then
                         if not nome:find("tree") and not nome:find("rock") then
@@ -61,20 +64,6 @@ local function EncontrarPets()
         end
     end
     return pets
-end
-
--- ========================================
--- FUNÇÃO PARA ENCONTRAR REMOTES
--- ========================================
-local function EncontrarRemote(nome)
-    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            if obj.Name:lower():find(nome:lower()) then
-                return obj
-            end
-        end
-    end
-    return nil
 end
 
 -- ========================================
@@ -103,49 +92,53 @@ local function PressionarTecla(tecla)
 end
 
 -- ========================================
--- FUNÇÃO PARA CAPTURAR PET VIA REMOTE
+-- FUNÇÃO PARA CLICAR NO PET (MIRA)
 -- ========================================
-local function CapturarPorRemote(pet)
-    print("📡 Tentando capturar via Remote...")
+local function MirarPet(pet)
+    if not pet then return false end
+    local hrp = pet:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
     
-    -- Procura remotes de captura
-    local remotes = {
-        { nome = "CapturePet", obj = EncontrarRemote("Capture") },
-        { nome = "PetEvent", obj = EncontrarRemote("Pet") },
-        { nome = "LassoRope", obj = EncontrarRemote("Lasso") },
-        { nome = "Farm", obj = EncontrarRemote("Farm") },
-    }
+    local camera = Workspace.CurrentCamera
+    if not camera then return false end
     
-    for _, r in pairs(remotes) do
-        if r.obj then
+    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+    if not onScreen then
+        -- Teleporta mais perto
+        if RootPart then
             pcall(function()
-                r.obj:FireServer("Capture", pet.Name, pet)
-                print("✅ Remote enviado: " .. r.nome)
-                task.wait(0.3)
-                return true
+                RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 0))
             end)
+            task.wait(0.3)
         end
+        pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+        if not onScreen then return false end
     end
     
-    return false
+    MoverMouse(pos.X, pos.Y)
+    task.wait(0.15)
+    return true
 end
 
 -- ========================================
--- FUNÇÃO PARA CAPTURAR PET
+-- FUNÇÃO PARA CAPTURAR PET (MISTURADA)
 -- ========================================
 local function CapturarPet(pet)
     if processando then return false end
     if capturados[pet] then return false end
-    if not pet then return false end
-    
-    local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
+    if not pet or not pet:IsA("Model") then return false end
     
     processando = true
+    local hrp = pet:FindFirstChild("HumanoidRootPart")
+    if not hrp then 
+        processando = false
+        return false 
+    end
+    
     print("\n🎯 CAPTURANDO: " .. pet.Name)
     status.Text = "🎯 Capturando: " .. pet.Name
     
-    -- 1. Teleporta para o pet
+    -- 1. TELEPORTA PARA O PET
     if RootPart then
         pcall(function()
             RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 0))
@@ -153,36 +146,28 @@ local function CapturarPet(pet)
         task.wait(0.3)
     end
     
-    -- 2. Equipa o lasso (tecla 1)
+    -- 2. EQUIPA O LASSO (TECLA 1)
     print("🎯 Equipando lasso...")
     PressionarTecla(Enum.KeyCode.One)
     task.wait(0.3)
     
-    -- 3. Move o mouse para o pet
-    local camera = Workspace.CurrentCamera
-    if not camera then
+    -- 3. MIRA NO PET
+    print("🎯 Mirando no pet...")
+    local mirou = MirarPet(pet)
+    if not mirou then
+        print("❌ Não conseguiu mirar no pet")
         processando = false
+        status.Text = "❌ Falhou: " .. pet.Name
         return false
     end
     
-    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-    if onScreen then
-        MoverMouse(pos.X, pos.Y)
-        task.wait(0.15)
-    end
+    -- 4. LANÇA O LASSO (CLIQUE)
+    print("🎯 Lançando lasso!")
+    Clicar()
+    task.wait(0.5)
     
-    -- 4. Tenta capturar via Remote
-    local remoteSucesso = CapturarPorRemote(pet)
-    
-    -- 5. Clica no pet (lança lasso)
-    if onScreen then
-        print("🎯 Lançando lasso...")
-        Clicar()
-        task.wait(0.3)
-    end
-    
-    -- 6. CLICA RÁPIDO PARA ENCHER A BARRINHA
-    print("🖱️ Enchendo a barra...")
+    -- 5. CLICA REPETIDAMENTE PARA ENCHER A BARRINHA
+    print("🖱️ Enchendo a barra de captura...")
     for i = 1, Config.TotalClicks do
         Clicar()
         if i % 10 == 0 then
@@ -193,7 +178,7 @@ local function CapturarPet(pet)
     
     task.wait(0.5)
     
-    -- 7. Verifica se capturou
+    -- 6. VERIFICA SE CAPTUROU
     local pasta = Player:FindFirstChild("Pets")
     if pasta then
         for _, p in pairs(pasta:GetChildren()) do
@@ -208,6 +193,7 @@ local function CapturarPet(pet)
         end
     end
     
+    -- Verifica se o pet foi destruído
     if not pet.Parent then
         capturados[pet] = true
         totalCapturados = totalCapturados + 1
@@ -221,6 +207,23 @@ local function CapturarPet(pet)
     print("❌ Falhou: " .. pet.Name)
     status.Text = "❌ Falhou: " .. pet.Name
     return false
+end
+
+-- ========================================
+-- LEVAR PET À BASE
+-- ========================================
+local function LevarPetBase(pet)
+    if not pet then return end
+    
+    local base = Workspace:FindFirstChild("Base") or Workspace:FindFirstChild("PlayerBase")
+    if not base then return end
+    
+    if RootPart then
+        pcall(function()
+            RootPart.CFrame = CFrame.new(base.Position + Vector3.new(0, 2, 0))
+        end)
+        task.wait(0.3)
+    end
 end
 
 -- ========================================
@@ -249,7 +252,10 @@ local function LoopAuto()
             end
             
             if alvo then
-                CapturarPet(alvo)
+                local sucesso = CapturarPet(alvo)
+                if sucesso then
+                    LevarPetBase(alvo)
+                end
                 task.wait(Config.Delay)
             else
                 status.Text = "⏳ Procurando pets..."
@@ -304,8 +310,8 @@ local function CriarMenu()
     
     local frame = Instance.new("Frame")
     frame.Parent = gui
-    frame.Size = UDim2.new(0, 260, 0, 220)
-    frame.Position = UDim2.new(0.5, -130, 0.5, -110)
+    frame.Size = UDim2.new(0, 260, 0, 200)
+    frame.Position = UDim2.new(0.5, -130, 0.5, -100)
     frame.BackgroundColor3 = Color3.fromRGB(10, 10, 30)
     frame.BackgroundTransparency = 0.1
     frame.Active = true
@@ -325,16 +331,18 @@ local function CriarMenu()
     titulo.TextSize = 18
     titulo.Font = Enum.Font.GothamBold
     
+    -- Info
     local info = Instance.new("TextLabel")
     info.Parent = frame
     info.Size = UDim2.new(0.9, 0, 0, 20)
     info.Position = UDim2.new(0.05, 0, 0.18, 0)
     info.BackgroundTransparency = 1
-    info.Text = "🖱️ " .. Config.TotalClicks .. " cliques"
+    info.Text = "🖱️ " .. Config.TotalClicks .. " cliques/pet"
     info.TextColor3 = Color3.fromRGB(100, 200, 255)
     info.TextSize = 12
     info.Font = Enum.Font.Gotham
     
+    -- ESP
     local btnESP = Instance.new("TextButton")
     btnESP.Parent = frame
     btnESP.Size = UDim2.new(0.8, 0, 0, 30)
@@ -350,6 +358,7 @@ local function CriarMenu()
     espCorner.Parent = btnESP
     espCorner.CornerRadius = UDim.new(0, 8)
     
+    -- AUTO
     local btnAuto = Instance.new("TextButton")
     btnAuto.Parent = frame
     btnAuto.Size = UDim2.new(0.8, 0, 0, 30)
@@ -365,6 +374,7 @@ local function CriarMenu()
     autoCorner.Parent = btnAuto
     autoCorner.CornerRadius = UDim.new(0, 8)
     
+    -- TESTE
     local btnTeste = Instance.new("TextButton")
     btnTeste.Parent = frame
     btnTeste.Size = UDim2.new(0.8, 0, 0, 30)
@@ -380,6 +390,7 @@ local function CriarMenu()
     testeCorner.Parent = btnTeste
     testeCorner.CornerRadius = UDim.new(0, 8)
     
+    -- Status
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Parent = frame
     statusLabel.Size = UDim2.new(0.9, 0, 0, 20)
@@ -390,6 +401,7 @@ local function CriarMenu()
     statusLabel.TextSize = 12
     statusLabel.Font = Enum.Font.Gotham
     
+    -- Eventos
     btnESP.MouseButton1Click:Connect(function()
         espAtivo = not espAtivo
         btnESP.Text = espAtivo and "🟢 ESP" or "🔴 ESP"
@@ -426,6 +438,7 @@ local function CriarMenu()
         end
     end)
     
+    -- Monitoramento
     task.spawn(function()
         while true do
             task.wait(2)
@@ -443,17 +456,17 @@ end
 -- INICIAR
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - VERSÃO REMOTE")
+print("  ✧ SIX SEVEN - VERSÃO FINAL")
 print("========================================")
-print("  📌 REMOTES DETECTADOS:")
-print("  - LassoRopeVisual")
-print("  - EggFlickerVisual")
-print("  - showConfirmationModal")
-print("  - FarmWeatherChanged")
+print("  📌 COMO FUNCIONA:")
+print("  1. Teleporta para o pet")
+print("  2. Equipa lasso (tecla 1)")
+print("  3. Mira no pet")
+print("  4. Lança lasso (clique)")
+print("  5. " .. Config.TotalClicks .. " cliques para encher a barra")
 print("========================================")
 
 CriarMenu()
 
-print("✅ SCRIPT CARREGADO!")
-print("📌 Teste com o botão TESTAR")
-print("📌 Veja o console (F9)")
+print("✅ SCRIPT PRONTO!")
+print("📌 Teste com o botão TESTAR primeiro")
