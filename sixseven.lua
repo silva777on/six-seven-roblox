@@ -1,9 +1,9 @@
 --[[
-    SIX SEVEN - COMPLETO (Menu Bonito + Funcionalidades)
+    SIX SEVEN - VERSÃO SIMPLES E FUNCIONAL
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN COMPLETO...")
+print("🔄 CARREGANDO SIX SEVEN...")
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -32,58 +32,7 @@ local autoAtivo = false
 local processando = false
 local capturados = {}
 local totalCapturados = 0
-
--- ========================================
--- TEMA DO MENU
--- ========================================
-local Theme = {
-    Background     = Color3.fromRGB(12, 10, 18),
-    Panel          = Color3.fromRGB(20, 16, 30),
-    PanelAlt       = Color3.fromRGB(26, 20, 38),
-    Purple         = Color3.fromRGB(138, 43, 226),
-    PurpleNeon     = Color3.fromRGB(170, 90, 255),
-    PurpleDark     = Color3.fromRGB(60, 30, 90),
-    TextWhite      = Color3.fromRGB(240, 240, 245),
-    TextGray       = Color3.fromRGB(170, 170, 180),
-    Danger         = Color3.fromRGB(255, 80, 90),
-    Success        = Color3.fromRGB(120, 220, 150),
-    CornerRadius   = UDim.new(0, 12),
-    Font           = Enum.Font.GothamSemibold,
-    FontRegular    = Enum.Font.Gotham,
-}
-
--- ========================================
--- FUNÇÕES DE CRIAÇÃO DE UI
--- ========================================
-local function create(className, props, children)
-    local inst = Instance.new(className)
-    for prop, value in pairs(props or {}) do
-        inst[prop] = value
-    end
-    for _, child in ipairs(children or {}) do
-        child.Parent = inst
-    end
-    return inst
-end
-
-local function tween(obj, info, props)
-    local t = TweenService:Create(obj, info, props)
-    t:Play()
-    return t
-end
-
-local function addCorner(parent, radius)
-    create("UICorner", { CornerRadius = radius or Theme.CornerRadius, Parent = parent })
-end
-
-local function addStroke(parent, color, thickness, transparency)
-    create("UIStroke", {
-        Color = color or Theme.Purple,
-        Thickness = thickness or 1,
-        Transparency = transparency or 0.4,
-        Parent = parent,
-    })
-end
+local menuAberto = true
 
 -- ========================================
 -- FUNÇÕES DE CLICK
@@ -145,7 +94,7 @@ local function CapturarPet(pet)
     
     processando = true
     print("🎯 CAPTURANDO: " .. pet.Name)
-    statusLabel.Text = "🎯 " .. pet.Name
+    if statusLabel then statusLabel.Text = "🎯 " .. pet.Name end
     
     -- Teleporta
     if RootPart then
@@ -155,7 +104,7 @@ local function CapturarPet(pet)
         task.wait(0.3)
     end
     
-    -- Tecla 1 (lasso)
+    -- Tecla 1
     PressionarTecla(Enum.KeyCode.One)
     task.wait(0.3)
     
@@ -169,11 +118,11 @@ local function CapturarPet(pet)
         end
     end
     
-    -- Clica no pet (lança lasso)
+    -- Clica no pet
     Clicar()
     task.wait(0.5)
     
-    -- Clica 80x para encher a barra
+    -- Clica 80x
     for i = 1, Config.TotalClicks do
         Clicar()
         task.wait(Config.ClickSpeed)
@@ -181,7 +130,7 @@ local function CapturarPet(pet)
     
     task.wait(0.5)
     
-    -- Verifica captura
+    -- Verifica
     local pasta = player:FindFirstChild("Pets")
     if pasta then
         for _, p in pairs(pasta:GetChildren()) do
@@ -190,8 +139,7 @@ local function CapturarPet(pet)
                 totalCapturados = totalCapturados + 1
                 processando = false
                 print("✅ CAPTUROU: " .. pet.Name)
-                statusLabel.Text = "✅ " .. pet.Name
-                Notify("Sucesso", "Capturou " .. pet.Name, "success")
+                if statusLabel then statusLabel.Text = "✅ " .. pet.Name end
                 return true
             end
         end
@@ -202,14 +150,13 @@ local function CapturarPet(pet)
         totalCapturados = totalCapturados + 1
         processando = false
         print("✅ CAPTUROU: " .. pet.Name)
-        statusLabel.Text = "✅ " .. pet.Name
-        Notify("Sucesso", "Capturou " .. pet.Name, "success")
+        if statusLabel then statusLabel.Text = "✅ " .. pet.Name end
         return true
     end
     
     processando = false
     print("❌ Falhou: " .. pet.Name)
-    statusLabel.Text = "❌ " .. pet.Name
+    if statusLabel then statusLabel.Text = "❌ " .. pet.Name end
     return false
 end
 
@@ -282,508 +229,237 @@ local function AtualizarESP()
 end
 
 -- ========================================
--- SISTEMA DE NOTIFICAÇÕES
--- ========================================
-local notifHolder
-local function Notify(title, message, kind, duration)
-    kind = kind or "info"
-    duration = duration or 3.5
-    
-    if not notifHolder then return end
-    
-    local color = Theme.Purple
-    if kind == "success" then color = Theme.Success
-    elseif kind == "error" then color = Theme.Danger end
-    
-    local notif = create("Frame", {
-        Size = UDim2.new(1, 0, 0, 0),
-        AutomaticSize = Enum.AutomaticSize.Y,
-        BackgroundColor3 = Theme.Panel,
-        BackgroundTransparency = 0.05,
-        Parent = notifHolder,
-    })
-    addCorner(notif, UDim.new(0, 10))
-    addStroke(notif, color, 1, 0.2)
-    
-    create("UIPadding", {
-        PaddingTop = UDim.new(0, 10),
-        PaddingBottom = UDim.new(0, 10),
-        PaddingLeft = UDim.new(0, 12),
-        PaddingRight = UDim.new(0, 12),
-        Parent = notif,
-    })
-    
-    create("Frame", {
-        Size = UDim2.new(0, 3, 1, 0),
-        BackgroundColor3 = color,
-        Parent = notif,
-    })
-    
-    create("TextLabel", {
-        Text = title,
-        Font = Theme.Font,
-        TextSize = 13,
-        TextColor3 = Theme.TextWhite,
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, -10, 0, 16),
-        Position = UDim2.new(0, 8, 0, 0),
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = notif,
-    })
-    
-    create("TextLabel", {
-        Text = message,
-        Font = Theme.FontRegular,
-        TextSize = 12,
-        TextColor3 = Theme.TextGray,
-        BackgroundTransparency = 1,
-        TextWrapped = true,
-        AutomaticSize = Enum.AutomaticSize.Y,
-        Size = UDim2.new(1, -10, 0, 0),
-        Position = UDim2.new(0, 8, 0, 18),
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = notif,
-    })
-    
-    notif.BackgroundTransparency = 1
-    notif.Position = UDim2.new(1, 30, 0, 0)
-    tween(notif, TweenInfo.new(0.25), {
-        BackgroundTransparency = 0.05,
-        Position = UDim2.new(0, 0, 0, 0),
-    })
-    
-    task.delay(duration, function()
-        local fade = tween(notif, TweenInfo.new(0.25), {
-            BackgroundTransparency = 1,
-            Position = UDim2.new(1, 30, 0, 0),
-        })
-        fade.Completed:Wait()
-        notif:Destroy()
-    end)
-end
-
--- ========================================
--- CRIAR MENU
+-- CRIAR MENU SIMPLES
 -- ========================================
 local function CriarMenu()
-    local screenGui = create("ScreenGui", {
-        Name = "SixSeven",
-        ResetOnSpawn = false,
-        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-        Parent = CoreGui,
-    })
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "SixSeven"
+    screenGui.Parent = CoreGui
+    screenGui.ResetOnSpawn = false
     
-    -- Janela principal
-    local mainFrame = create("Frame", {
-        Size = UDim2.fromOffset(480, 380),
-        Position = UDim2.new(0.5, -240, 0.5, -190),
-        BackgroundColor3 = Theme.Background,
-        BorderSizePixel = 0,
-        ClipsDescendants = true,
-        Parent = screenGui,
-    })
-    addCorner(mainFrame, UDim.new(0, 14))
-    addStroke(mainFrame, Theme.Purple, 1.5, 0.3)
+    -- Frame principal
+    local frame = Instance.new("Frame")
+    frame.Parent = screenGui
+    frame.Size = UDim2.new(0, 260, 0, 220)
+    frame.Position = UDim2.new(0.5, -130, 0.5, -110)
+    frame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
+    frame.BackgroundTransparency = 0.1
+    frame.Active = true
+    frame.Draggable = true
+    frame.Visible = true
+    frame.ClipsDescendants = true
     
-    -- Glow
-    create("ImageLabel", {
-        BackgroundTransparency = 1,
-        Image = "rbxassetid://5028857084",
-        ImageColor3 = Theme.Purple,
-        ImageTransparency = 0.85,
-        Size = UDim2.fromOffset(900, 900),
-        Position = UDim2.new(0.5, -450, 0.5, -450),
-        ZIndex = 0,
-        Parent = mainFrame,
-    })
+    local corner = Instance.new("UICorner")
+    corner.Parent = frame
+    corner.CornerRadius = UDim.new(0, 12)
     
-    -- TopBar
-    local topBar = create("Frame", {
-        Size = UDim2.new(1, 0, 0, 46),
-        BackgroundColor3 = Theme.Panel,
-        BorderSizePixel = 0,
-        Parent = mainFrame,
-    })
-    addCorner(topBar, UDim.new(0, 14))
-    
-    create("Frame", {
-        Size = UDim2.new(1, 0, 0, 14),
-        Position = UDim2.new(0, 0, 1, -14),
-        BackgroundColor3 = Theme.Panel,
-        BorderSizePixel = 0,
-        ZIndex = 1,
-        Parent = topBar,
-    })
-    
-    -- Logo
-    create("Frame", {
-        Size = UDim2.fromOffset(10, 10),
-        Position = UDim2.new(0, 16, 0.5, -5),
-        BackgroundColor3 = Theme.PurpleNeon,
-        Parent = topBar,
-    })
+    local stroke = Instance.new("UIStroke")
+    stroke.Parent = frame
+    stroke.Color = Color3.fromRGB(138, 43, 226)
+    stroke.Thickness = 1.5
+    stroke.Transparency = 0.3
     
     -- Título
-    create("TextLabel", {
-        Text = "SIX SEVEN",
-        Font = Theme.Font,
-        TextSize = 18,
-        TextColor3 = Theme.TextWhite,
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 34, 0, 0),
-        Size = UDim2.new(0, 200, 1, 0),
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = topBar,
-    })
+    local titulo = Instance.new("TextLabel")
+    titulo.Parent = frame
+    titulo.Size = UDim2.new(1, -40, 0, 35)
+    titulo.Position = UDim2.new(0, 10, 0, 0)
+    titulo.BackgroundTransparency = 1
+    titulo.Text = "✧ SIX SEVEN"
+    titulo.TextColor3 = Color3.fromRGB(200, 150, 255)
+    titulo.TextSize = 18
+    titulo.Font = Enum.Font.GothamBold
+    titulo.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Botão Minimizar
-    local minimizeBtn = create("TextButton", {
-        Text = "—",
-        Font = Theme.Font,
-        TextSize = 16,
-        TextColor3 = Theme.TextGray,
-        BackgroundColor3 = Theme.PanelAlt,
-        Size = UDim2.fromOffset(28, 28),
-        Position = UDim2.new(1, -72, 0.5, -14),
-        AutoButtonColor = false,
-        Parent = topBar,
-    })
-    addCorner(minimizeBtn, UDim.new(0, 8))
+    -- Mininimizar
+    local btnMin = Instance.new("TextButton")
+    btnMin.Parent = frame
+    btnMin.Size = UDim2.new(0, 30, 0, 30)
+    btnMin.Position = UDim2.new(1, -35, 0, 2)
+    btnMin.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    btnMin.Text = "─"
+    btnMin.TextColor3 = Color3.new(1, 1, 1)
+    btnMin.TextSize = 18
+    btnMin.Font = Enum.Font.GothamBold
+    btnMin.BorderSizePixel = 0
+    btnMin.AutoButtonColor = false
     
-    -- Botão Fechar
-    local closeBtn = create("TextButton", {
-        Text = "✕",
-        Font = Theme.Font,
-        TextSize = 16,
-        TextColor3 = Theme.TextGray,
-        BackgroundColor3 = Theme.PanelAlt,
-        Size = UDim2.fromOffset(28, 28),
-        Position = UDim2.new(1, -38, 0.5, -14),
-        AutoButtonColor = false,
-        Parent = topBar,
-    })
-    addCorner(closeBtn, UDim.new(0, 8))
+    local minCorner = Instance.new("UICorner")
+    minCorner.Parent = btnMin
+    minCorner.CornerRadius = UDim.new(0, 6)
     
-    -- Sidebar
-    local sidebar = create("Frame", {
-        Size = UDim2.new(0, 140, 1, -46),
-        Position = UDim2.new(0, 0, 0, 46),
-        BackgroundColor3 = Theme.Panel,
-        BorderSizePixel = 0,
-        Parent = mainFrame,
-    })
+    -- Fechar
+    local btnClose = Instance.new("TextButton")
+    btnClose.Parent = frame
+    btnClose.Size = UDim2.new(0, 30, 0, 30)
+    btnClose.Position = UDim2.new(1, -70, 0, 2)
+    btnClose.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+    btnClose.Text = "✕"
+    btnClose.TextColor3 = Color3.new(1, 1, 1)
+    btnClose.TextSize = 14
+    btnClose.Font = Enum.Font.GothamBold
+    btnClose.BorderSizePixel = 0
+    btnClose.AutoButtonColor = false
     
-    create("UIListLayout", {
-        Padding = UDim.new(0, 6),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Parent = sidebar,
-    })
-    create("UIPadding", {
-        PaddingTop = UDim.new(0, 12),
-        PaddingLeft = UDim.new(0, 10),
-        PaddingRight = UDim.new(0, 10),
-        Parent = sidebar,
-    })
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.Parent = btnClose
+    closeCorner.CornerRadius = UDim.new(0, 6)
     
-    -- Área de conteúdo
-    local contentArea = create("Frame", {
-        Size = UDim2.new(1, -140, 1, -46),
-        Position = UDim2.new(0, 140, 0, 46),
-        BackgroundTransparency = 1,
-        Parent = mainFrame,
-    })
-    create("UIPadding", {
-        PaddingTop = UDim.new(0, 14),
-        PaddingLeft = UDim.new(0, 14),
-        PaddingRight = UDim.new(0, 14),
-        PaddingBottom = UDim.new(0, 14),
-        Parent = contentArea,
-    })
+    -- Info
+    local info = Instance.new("TextLabel")
+    info.Parent = frame
+    info.Size = UDim2.new(0.9, 0, 0, 20)
+    info.Position = UDim2.new(0.05, 0, 0.18, 0)
+    info.BackgroundTransparency = 1
+    info.Text = "🖱️ " .. Config.TotalClicks .. " cliques/pet"
+    info.TextColor3 = Color3.fromRGB(100, 200, 255)
+    info.TextSize = 12
+    info.Font = Enum.Font.Gotham
     
-    -- Notificações
-    notifHolder = create("Frame", {
-        AnchorPoint = Vector2.new(1, 1),
-        Position = UDim2.new(1, -20, 1, -20),
-        Size = UDim2.fromOffset(280, 400),
-        BackgroundTransparency = 1,
-        Parent = screenGui,
-    })
-    create("UIListLayout", {
-        Padding = UDim.new(0, 8),
-        VerticalAlignment = Enum.VerticalAlignment.Bottom,
-        HorizontalAlignment = Enum.HorizontalAlignment.Right,
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Parent = notifHolder,
-    })
+    -- Container dos botões
+    local container = Instance.new("Frame")
+    container.Parent = frame
+    container.Size = UDim2.new(0.9, 0, 0.5, 0)
+    container.Position = UDim2.new(0.05, 0, 0.28, 0)
+    container.BackgroundTransparency = 1
     
-    -- Sistema de abas
-    local tabs = {}
-    local tabButtons = {}
-    local activeTab = nil
+    local layout = Instance.new("UIListLayout")
+    layout.Parent = container
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
     
-    local function selectTab(name)
-        if activeTab == name then return end
-        activeTab = name
-        
-        for tabName, page in pairs(tabs) do
-            page.Visible = (tabName == name)
-        end
-        
-        for tabName, btn in pairs(tabButtons) do
-            if tabName == name then
-                tween(btn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.PurpleDark })
-                btn.UIStroke.Transparency = 0
-            else
-                tween(btn, TweenInfo.new(0.15), { BackgroundColor3 = Theme.Panel })
-                btn.UIStroke.Transparency = 1
-            end
-        end
-    end
+    -- Botão ESP
+    local btnESP = Instance.new("TextButton")
+    btnESP.Parent = container
+    btnESP.Size = UDim2.new(1, 0, 0, 35)
+    btnESP.BackgroundColor3 = Color3.fromRGB(50, 50, 120)
+    btnESP.Text = "🔴 ESP"
+    btnESP.TextColor3 = Color3.new(1, 1, 1)
+    btnESP.TextSize = 14
+    btnESP.Font = Enum.Font.GothamBold
+    btnESP.BorderSizePixel = 0
+    btnESP.AutoButtonColor = false
     
-    local function registerTab(name, order)
-        local btn = create("TextButton", {
-            Text = "  " .. name,
-            Font = Theme.FontRegular,
-            TextSize = 13,
-            TextColor3 = Theme.TextWhite,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            BackgroundColor3 = Theme.Panel,
-            Size = UDim2.new(1, 0, 0, 34),
-            AutoButtonColor = false,
-            LayoutOrder = order or 0,
-            Parent = sidebar,
-        })
-        addCorner(btn, UDim.new(0, 8))
-        local stroke = create("UIStroke", {
-            Color = Theme.PurpleNeon,
-            Thickness = 1,
-            Transparency = 1,
-            Parent = btn,
-        })
-        
-        local page = create("ScrollingFrame", {
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            ScrollBarThickness = 4,
-            ScrollBarImageColor3 = Theme.Purple,
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y,
-            Visible = false,
-            Parent = contentArea,
-        })
-        create("UIListLayout", {
-            Padding = UDim.new(0, 8),
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = page,
-        })
-        
-        tabs[name] = page
-        tabButtons[name] = btn
-        
-        btn.MouseButton1Click:Connect(function()
-            selectTab(name)
-        end)
-        
-        if not activeTab then
-            selectTab(name)
-        end
-        
-        return page
-    end
+    local espCorner = Instance.new("UICorner")
+    espCorner.Parent = btnESP
+    espCorner.CornerRadius = UDim.new(0, 8)
     
-    local function addToggle(page, labelText, default, callback)
-        local row = create("Frame", {
-            Size = UDim2.new(1, 0, 0, 36),
-            BackgroundColor3 = Theme.PanelAlt,
-            Parent = page,
-        })
-        addCorner(row, UDim.new(0, 8))
-        create("UIPadding", {
-            PaddingLeft = UDim.new(0, 10),
-            PaddingRight = UDim.new(0, 10),
-            Parent = row,
-        })
-        
-        create("TextLabel", {
-            Text = labelText,
-            Font = Theme.FontRegular,
-            TextSize = 13,
-            TextColor3 = Theme.TextWhite,
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, -60, 1, 0),
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Parent = row,
-        })
-        
-        local toggleBg = create("TextButton", {
-            Text = "",
-            Size = UDim2.fromOffset(42, 22),
-            Position = UDim2.new(1, -42, 0.5, -11),
-            BackgroundColor3 = default and Theme.Purple or Theme.PanelAlt,
-            AutoButtonColor = false,
-            Parent = row,
-        })
-        addCorner(toggleBg, UDim.new(1, 0))
-        addStroke(toggleBg, Theme.Purple, 1, 0.3)
-        
-        local knob = create("Frame", {
-            Size = UDim2.fromOffset(16, 16),
-            Position = default and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8),
-            BackgroundColor3 = Theme.TextWhite,
-            Parent = toggleBg,
-        })
-        addCorner(knob, UDim.new(1, 0))
-        
-        local state = default or false
-        
-        toggleBg.MouseButton1Click:Connect(function()
-            state = not state
-            tween(knob, TweenInfo.new(0.15), {
-                Position = state and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8),
-            })
-            tween(toggleBg, TweenInfo.new(0.15), {
-                BackgroundColor3 = state and Theme.Purple or Theme.PanelAlt,
-            })
-            if callback then
-                callback(state)
-            end
-        end)
-        
-        return row
-    end
+    -- Botão AUTO
+    local btnAuto = Instance.new("TextButton")
+    btnAuto.Parent = container
+    btnAuto.Size = UDim2.new(1, 0, 0, 35)
+    btnAuto.BackgroundColor3 = Color3.fromRGB(50, 50, 120)
+    btnAuto.Text = "🔴 AUTO"
+    btnAuto.TextColor3 = Color3.new(1, 1, 1)
+    btnAuto.TextSize = 14
+    btnAuto.Font = Enum.Font.GothamBold
+    btnAuto.BorderSizePixel = 0
+    btnAuto.AutoButtonColor = false
     
-    -- ========================================
-    -- CRIAR ABAS
-    -- ========================================
+    local autoCorner = Instance.new("UICorner")
+    autoCorner.Parent = btnAuto
+    autoCorner.CornerRadius = UDim.new(0, 8)
     
-    -- Aba Principal
-    local homePage = registerTab("Início", 1)
-    create("TextLabel", {
-        Text = "SIX SEVEN - Painel de Controle\n\nAtive as funções abaixo:",
-        Font = Theme.FontRegular,
-        TextSize = 13,
-        TextColor3 = Theme.TextGray,
-        BackgroundTransparency = 1,
-        TextWrapped = true,
-        Size = UDim2.new(1, 0, 0, 60),
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextYAlignment = Enum.TextYAlignment.Top,
-        Parent = homePage,
-    })
+    -- Botão TESTE
+    local btnTeste = Instance.new("TextButton")
+    btnTeste.Parent = container
+    btnTeste.Size = UDim2.new(1, 0, 0, 35)
+    btnTeste.BackgroundColor3 = Color3.fromRGB(180, 120, 40)
+    btnTeste.Text = "🎯 TESTAR"
+    btnTeste.TextColor3 = Color3.new(1, 1, 1)
+    btnTeste.TextSize = 14
+    btnTeste.Font = Enum.Font.GothamBold
+    btnTeste.BorderSizePixel = 0
+    btnTeste.AutoButtonColor = false
     
-    local statusLabel = create("TextLabel", {
-        Text = "📊 Pronto",
-        Font = Theme.FontRegular,
-        TextSize = 12,
-        TextColor3 = Theme.TextGray,
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, 20),
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = homePage,
-    })
+    local testeCorner = Instance.new("UICorner")
+    testeCorner.Parent = btnTeste
+    testeCorner.CornerRadius = UDim.new(0, 8)
     
-    -- Aba Configurações
-    local settingsPage = registerTab("Configurações", 2)
+    -- Status
+    statusLabel = Instance.new("TextLabel")
+    statusLabel.Parent = frame
+    statusLabel.Size = UDim2.new(0.9, 0, 0, 20)
+    statusLabel.Position = UDim2.new(0.05, 0, 0.85, 0)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "📊 Pronto"
+    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
+    statusLabel.TextSize = 12
+    statusLabel.Font = Enum.Font.Gotham
     
-    -- Toggle ESP
-    addToggle(settingsPage, "ESP (Ver Pets)", false, function(state)
-        espAtivo = state
+    -- Botão flutuante
+    local btnFloat = Instance.new("TextButton")
+    btnFloat.Parent = screenGui
+    btnFloat.Size = UDim2.new(0, 45, 0, 45)
+    btnFloat.Position = UDim2.new(0.93, -22, 0.93, -22)
+    btnFloat.BackgroundColor3 = Color3.fromRGB(120, 80, 220)
+    btnFloat.Text = "✧"
+    btnFloat.TextColor3 = Color3.new(1, 1, 1)
+    btnFloat.TextSize = 24
+    btnFloat.Font = Enum.Font.GothamBold
+    btnFloat.BorderSizePixel = 0
+    btnFloat.Visible = false
+    btnFloat.AutoButtonColor = false
+    
+    local floatCorner = Instance.new("UICorner")
+    floatCorner.Parent = btnFloat
+    floatCorner.CornerRadius = UDim.new(1, 0)
+    
+    -- Eventos dos botões
+    btnESP.MouseButton1Click:Connect(function()
+        espAtivo = not espAtivo
+        btnESP.Text = espAtivo and "🟢 ESP" or "🔴 ESP"
+        btnESP.BackgroundColor3 = espAtivo and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(50, 50, 120)
         AtualizarESP()
-        Notify("ESP", state and "Ativado" or "Desativado", state and "success" or "info")
         
-        if espAtivo then
-            task.spawn(function()
-                while espAtivo do
-                    AtualizarESP()
-                    task.wait(1)
-                end
-            end)
-        end
+        task.spawn(function()
+            while espAtivo do
+                AtualizarESP()
+                task.wait(1)
+            end
+        end)
     end)
     
-    -- Toggle AUTO
-    addToggle(settingsPage, "Auto Capture", false, function(state)
-        autoAtivo = state
-        Notify("Auto Capture", state and "Ativado" or "Desativado", state and "success" or "info")
-        if state then
+    btnAuto.MouseButton1Click:Connect(function()
+        autoAtivo = not autoAtivo
+        btnAuto.Text = autoAtivo and "🟢 AUTO" or "🔴 AUTO"
+        btnAuto.BackgroundColor3 = autoAtivo and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(50, 50, 120)
+        statusLabel.Text = autoAtivo and "🔄 Auto ligado" or "⏹️ Auto desligado"
+        
+        if autoAtivo then
             task.spawn(LoopAuto)
         end
     end)
     
-    -- ========================================
-    -- ARRASTAR JANELA
-    -- ========================================
-    local dragging = false
-    local dragStart, startPos
-    
-    topBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = mainFrame.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            mainFrame.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-    
-    -- ========================================
-    -- MINIMIZAR / FECHAR
-    -- ========================================
-    local minimized = false
-    local expandedSize = mainFrame.Size
-    
-    minimizeBtn.MouseButton1Click:Connect(function()
-        minimized = not minimized
-        if minimized then
-            tween(mainFrame, TweenInfo.new(0.25), { Size = UDim2.fromOffset(expandedSize.X.Offset, 46) })
-            sidebar.Visible = false
-            contentArea.Visible = false
+    btnTeste.MouseButton1Click:Connect(function()
+        print("🎯 TESTANDO CAPTURA...")
+        local pets = EncontrarPets()
+        if #pets > 0 then
+            CapturarPet(pets[1])
         else
-            tween(mainFrame, TweenInfo.new(0.25), { Size = expandedSize })
-            task.delay(0.25, function()
-                sidebar.Visible = true
-                contentArea.Visible = true
-            end)
+            print("❌ Nenhum pet encontrado!")
+            statusLabel.Text = "❌ Nenhum pet"
         end
     end)
     
-    closeBtn.MouseButton1Click:Connect(function()
-        local closeTween = tween(mainFrame, TweenInfo.new(0.2), {
-            Size = UDim2.fromOffset(0, 0),
-            Position = mainFrame.Position + UDim2.fromOffset(mainFrame.Size.X.Offset / 2, mainFrame.Size.Y.Offset / 2),
-        })
-        closeTween.Completed:Wait()
+    -- Minimizar
+    local function Minimizar()
+        frame.Visible = false
+        btnFloat.Visible = true
+    end
+    
+    local function Abrir()
+        frame.Visible = true
+        btnFloat.Visible = false
+    end
+    
+    btnMin.MouseButton1Click:Connect(Minimizar)
+    btnFloat.MouseButton1Click:Connect(Abrir)
+    btnClose.MouseButton1Click:Connect(function()
         screenGui:Destroy()
     end)
     
-    -- ========================================
-    -- ANIMAÇÃO DE ABERTURA
-    -- ========================================
-    mainFrame.Size = UDim2.fromOffset(0, 0)
-    mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    tween(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = expandedSize,
-        Position = UDim2.new(0.5, -expandedSize.X.Offset / 2, 0.5, -expandedSize.Y.Offset / 2),
-    })
-    
-    -- ========================================
-    -- MONITORAMENTO
-    -- ========================================
+    -- Monitoramento
     task.spawn(function()
         while true do
             task.wait(2)
@@ -794,8 +470,6 @@ local function CriarMenu()
         end
     end)
     
-    Notify("Six Seven", "Script carregado com sucesso!", "success")
-    
     return screenGui
 end
 
@@ -803,11 +477,11 @@ end
 -- INICIAR
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - COMPLETO")
+print("  ✧ SIX SEVEN - SIMPLES")
 print("========================================")
-print("  📌 Menu com abas")
-print("  📌 ESP para ver pets")
-print("  📌 Auto Capture")
+print("  📌 ESP: Ver pets")
+print("  📌 AUTO: Capturar automático")
+print("  📌 TESTAR: Testar captura")
 print("========================================")
 
 CriarMenu()
