@@ -1,15 +1,17 @@
 --[[
-    SIX SEVEN - COMPLETO (Com Campos Editáveis)
+    SIX SEVEN - COMPLETO (Com Teleporte para Ilhas)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - EDITÁVEL...")
+print("🔄 CARREGANDO SIX SEVEN - COMPLETO...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local Workspace = game:GetService("Workspace")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
@@ -44,6 +46,19 @@ local capturedPets = {}
 local espObjects = {}
 local petPositions = {}
 local menuAberto = true
+
+-- ========================================
+-- LISTA DE ILHAS
+-- ========================================
+local Ilhas = {
+    "Docas Perdidas",
+    "Profundezas Esquecidas",
+    "Ilha do Safari",
+    "Ilha da Caveira",
+    "Ilha do Vulcão",
+    "Ilha das Abelhas",
+    "Ilha da Caverna"
+}
 
 -- ========================================
 -- FUNÇÃO PARA ENCONTRAR PETS
@@ -88,6 +103,177 @@ local function FindAllPets()
     end
     
     return pets
+end
+
+-- ========================================
+-- FUNÇÕES DE CLIQUE
+-- ========================================
+local function Clicar()
+    pcall(function()
+        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+        task.wait(0.02)
+        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+    end)
+end
+
+local function MoverMouse(x, y)
+    pcall(function()
+        VirtualInputManager:SendMouseMovement(x, y, Enum.VirtualKeyMode.Delta, game)
+    end)
+end
+
+-- ========================================
+-- FUNÇÃO PARA ENCONTRAR NOME DA ILHA NA TELA
+-- ========================================
+local function EncontrarIlhaNaTela(nomeIlha)
+    print("🔍 Procurando ilha: " .. nomeIlha)
+    
+    -- Procura no workspace por partes com o nome da ilha
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Part") or obj:IsA("Model") then
+            local nome = obj.Name
+            if nome and nome:find(nomeIlha) then
+                local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
+                if hrp then
+                    local camera = Workspace.CurrentCamera
+                    if camera then
+                        local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+                        if onScreen then
+                            print("✅ Encontrou: " .. nome .. " na tela")
+                            return pos.X, pos.Y
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Tenta encontrar pela posição no mapa
+    print("⚠️ Não encontrou na tela, tentando por posição...")
+    return nil, nil
+end
+
+-- ========================================
+-- FUNÇÃO PARA CLICAR NO BOTÃO "SIM"
+-- ========================================
+local function ClicarSim()
+    print("✅ Clicando em SIM...")
+    
+    -- Procura botão "Sim" na UI
+    local guis = {CoreGui, Player:FindFirstChild("PlayerGui")}
+    
+    for _, gui in pairs(guis) do
+        if gui then
+            for _, obj in pairs(gui:GetDescendants()) do
+                if obj:IsA("TextButton") or obj:IsA("ImageButton") then
+                    if obj.Visible then
+                        local texto = obj.Text and obj.Text:lower() or ""
+                        local nome = obj.Name:lower()
+                        
+                        if texto:find("sim") or texto:find("yes") or 
+                           nome:find("sim") or nome:find("yes") or
+                           nome:find("confirm") or nome:find("accept") then
+                            
+                            -- Tenta clicar no botão
+                            pcall(function()
+                                obj:FireServer()
+                                return true
+                            end)
+                            
+                            pcall(function()
+                                obj:Click()
+                                return true
+                            end)
+                            
+                            -- Clica com o mouse
+                            local absPos = obj.AbsolutePosition
+                            local absSize = obj.AbsoluteSize
+                            
+                            if absPos and absSize and absSize.X > 0 then
+                                local x = absPos.X + absSize.X / 2
+                                local y = absPos.Y + absSize.Y / 2
+                                
+                                MoverMouse(x, y)
+                                task.wait(0.1)
+                                Clicar()
+                                print("✅ Clicou em SIM!")
+                                return true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Fallback: clicar no centro da tela
+    local camera = Workspace.CurrentCamera
+    if camera then
+        local viewport = camera.ViewportSize
+        MoverMouse(viewport.X/2, viewport.Y/2)
+        task.wait(0.1)
+        Clicar()
+        print("✅ Clicou no centro (fallback)")
+        return true
+    end
+    
+    return false
+end
+
+-- ========================================
+-- FUNÇÃO PARA TELEPORTAR PARA ILHA
+-- ========================================
+local function TeleportarParaIlha(nomeIlha)
+    print("\n🚀 TELEPORTANDO PARA: " .. nomeIlha)
+    statusLabel.Text = "🚀 Teleportando para: " .. nomeIlha
+    
+    -- 1. Encontra a ilha na tela
+    local x, y = EncontrarIlhaNaTela(nomeIlha)
+    
+    if x and y then
+        -- Move o mouse para a ilha
+        MoverMouse(x, y)
+        task.wait(0.2)
+        
+        -- Clica na ilha
+        Clicar()
+        task.wait(0.5)
+        
+        -- Clica em SIM na confirmação
+        ClicarSim()
+        task.wait(0.5)
+        
+        print("✅ Teleportando para: " .. nomeIlha)
+        statusLabel.Text = "✅ Teleportado para: " .. nomeIlha
+        return true
+    else
+        -- Fallback: tenta teleportar via Remote
+        print("⚠️ Tentando teleport via Remote...")
+        
+        local remote = ReplicatedStorage:FindFirstChild("Teleport")
+            or ReplicatedStorage:FindFirstChild("TeleportEvent")
+            or ReplicatedStorage:FindFirstChild("IslandTeleport")
+        
+        if remote then
+            pcall(function()
+                remote:FireServer(nomeIlha)
+                print("✅ Remote enviado: " .. remote.Name)
+                return true
+            end)
+        end
+        
+        -- Fallback: tenta tecla
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.T, false, game)
+            task.wait(0.1)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.T, false, game)
+            print("✅ Tecla T pressionada")
+            return true
+        end)
+        
+        statusLabel.Text = "❌ Falhou: " .. nomeIlha
+        return false
+    end
 end
 
 -- ========================================
@@ -152,7 +338,6 @@ local function ClickOnPet(pet)
             mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
             task.wait(0.1)
             mouse.Button1Click()
-            print("🖱️ Clique em: " .. pet.Name)
             return true
         end
     end)
@@ -167,8 +352,6 @@ local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
-    
-    print("🎯 Capturando: " .. pet.Name)
     
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     SmoothTeleport(targetPos)
@@ -204,7 +387,6 @@ local function BringPetToBase(pet)
     if releaseRemote then
         pcall(function() 
             releaseRemote:FireServer(pet) 
-            print("📦 Pet solto na base!")
         end)
         task.wait(0.3)
     end
@@ -306,8 +488,6 @@ local function CreateESP(pet)
         Label = label,
         DistLabel = distLabel
     }
-    
-    print("✅ ESP criado para: " .. pet.Name)
 end
 
 local function RemoveESP(pet)
@@ -375,7 +555,6 @@ local function StartMonitoring()
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
                 local name = obj.Name:lower()
                 if not name:find("npc") and not name:find("humano") and not name:find("personagem") then
-                    print("🔍 Novo pet: " .. obj.Name)
                     if espActive then
                         task.wait(0.1)
                         UpdateESP()
@@ -395,7 +574,6 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     frame.Size = UDim2.new(1, 0, 0, 32)
     frame.BackgroundTransparency = 1
 
-    -- Label
     local label = Instance.new("TextLabel")
     label.Parent = frame
     label.Size = UDim2.new(0.35, 0, 1, 0)
@@ -407,7 +585,6 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     label.Font = Enum.Font.GothamBold
     label.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- Botão -
     local btnMinus = Instance.new("TextButton")
     btnMinus.Parent = frame
     btnMinus.Size = UDim2.new(0, 22, 0, 22)
@@ -423,7 +600,6 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     minusCorner.Parent = btnMinus
     minusCorner.CornerRadius = UDim.new(0, 4)
 
-    -- Campo de texto (editável)
     local textBox = Instance.new("TextBox")
     textBox.Parent = frame
     textBox.Size = UDim2.new(0, 35, 0, 22)
@@ -441,7 +617,6 @@ local function CreateEditableField(parent, labelText, defaultValue, minValue, ma
     textCorner.Parent = textBox
     textCorner.CornerRadius = UDim.new(0, 4)
 
-    -- Botão +
     local btnPlus = Instance.new("TextButton")
     btnPlus.Parent = frame
     btnPlus.Size = UDim2.new(0, 22, 0, 22)
@@ -498,11 +673,10 @@ local function CreateMenu()
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Frame principal
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 220, 0, 290)
-    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -145)
+    mainFrame.Size = UDim2.new(0, 230, 0, 400)
+    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -200)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -520,7 +694,6 @@ local function CreateMenu()
     stroke.Thickness = 1
     stroke.Transparency = 0.3
 
-    -- Título
     local title = Instance.new("TextLabel")
     title.Parent = mainFrame
     title.Size = UDim2.new(1, -50, 0, 30)
@@ -532,7 +705,6 @@ local function CreateMenu()
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- Fechar
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
     closeBtn.Size = UDim2.new(0, 22, 0, 22)
@@ -548,7 +720,6 @@ local function CreateMenu()
     closeCorner.Parent = closeBtn
     closeCorner.CornerRadius = UDim.new(0, 5)
 
-    -- Separador
     local sep = Instance.new("Frame")
     sep.Parent = mainFrame
     sep.Size = UDim2.new(0.9, 0, 0, 1)
@@ -556,39 +727,47 @@ local function CreateMenu()
     sep.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     sep.BackgroundTransparency = 0.5
 
-    -- Container dos botões
-    local container = Instance.new("Frame")
+    -- Container com scroll
+    local container = Instance.new("ScrollingFrame")
     container.Parent = mainFrame
-    container.Size = UDim2.new(0.9, 0, 0.7, 0)
-    container.Position = UDim2.new(0.05, 0, 0.17, 0)
+    container.Size = UDim2.new(1, -10, 1, -60)
+    container.Position = UDim2.new(0, 5, 0, 45)
     container.BackgroundTransparency = 1
+    container.BorderSizePixel = 0
+    container.ScrollBarThickness = 4
+    container.ScrollBarImageColor3 = Color3.fromRGB(138, 43, 226)
+    container.CanvasSize = UDim2.new(0, 0, 0, 0)
+    container.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
+
+    local content = Instance.new("Frame")
+    content.Parent = container
+    content.Size = UDim2.new(1, 0, 0, 0)
+    content.BackgroundTransparency = 1
+    content.AutomaticSize = Enum.AutomaticSize.Y
 
     local layout = Instance.new("UIListLayout")
-    layout.Parent = container
+    layout.Parent = content
     layout.Padding = UDim.new(0, 4)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
 
     -- ========================================
-    -- CAMPO VELOCIDADE
+    -- VELOCIDADE E JUMP
     -- ========================================
-    CreateEditableField(container, "🏃 Velocidade", Settings.Speed, 0, 100, function(value)
+    CreateEditableField(content, "🏃 Velocidade", Settings.Speed, 0, 100, function(value)
         Settings.Speed = value
         AtualizarVelocidade()
     end)
 
-    -- ========================================
-    -- CAMPO JUMP
-    -- ========================================
-    CreateEditableField(container, "🦘 Pulo", Settings.Jump, 0, 100, function(value)
+    CreateEditableField(content, "🦘 Pulo", Settings.Jump, 0, 100, function(value)
         Settings.Jump = value
         AtualizarJump()
     end)
 
     -- ========================================
-    -- BOTÃO ESP
+    -- ESP
     -- ========================================
     local espBtn = Instance.new("TextButton")
-    espBtn.Parent = container
+    espBtn.Parent = content
     espBtn.Size = UDim2.new(1, 0, 0, 28)
     espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     espBtn.Text = "🔴 ESP: OFF"
@@ -616,10 +795,10 @@ local function CreateMenu()
     end)
 
     -- ========================================
-    -- BOTÃO AUTO
+    -- AUTO CAPTURE
     -- ========================================
     local autoBtn = Instance.new("TextButton")
-    autoBtn.Parent = container
+    autoBtn.Parent = content
     autoBtn.Size = UDim2.new(1, 0, 0, 28)
     autoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     autoBtn.Text = "🔴 AUTO: OFF"
@@ -647,12 +826,48 @@ local function CreateMenu()
     end)
 
     -- ========================================
+    -- SEÇÃO: TELEPORTE PARA ILHAS
+    -- ========================================
+    local teleportLabel = Instance.new("TextLabel")
+    teleportLabel.Parent = content
+    teleportLabel.Size = UDim2.new(1, 0, 0, 20)
+    teleportLabel.BackgroundTransparency = 1
+    teleportLabel.Text = "─── 🚀 TELEPORTE ───"
+    teleportLabel.TextColor3 = Color3.fromRGB(138, 43, 226)
+    teleportLabel.TextSize = 12
+    teleportLabel.Font = Enum.Font.GothamBold
+    teleportLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+    -- Botões para cada ilha
+    for _, nomeIlha in pairs(Ilhas) do
+        local btn = Instance.new("TextButton")
+        btn.Parent = content
+        btn.Size = UDim2.new(1, 0, 0, 26)
+        btn.BackgroundColor3 = Color3.fromRGB(50, 40, 80)
+        btn.Text = "🌍 " .. nomeIlha
+        btn.TextColor3 = Color3.fromRGB(200, 200, 255)
+        btn.TextSize = 12
+        btn.Font = Enum.Font.GothamBold
+        btn.BorderSizePixel = 0
+        
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.Parent = btn
+        btnCorner.CornerRadius = UDim.new(0, 5)
+
+        btn.MouseButton1Click:Connect(function()
+            task.spawn(function()
+                TeleportarParaIlha(nomeIlha)
+            end)
+        end)
+    end
+
+    -- ========================================
     -- STATUS
     -- ========================================
-    local statusLabel = Instance.new("TextLabel")
+    statusLabel = Instance.new("TextLabel")
     statusLabel.Parent = mainFrame
     statusLabel.Size = UDim2.new(0.9, 0, 0, 18)
-    statusLabel.Position = UDim2.new(0.05, 0, 0.9, 0)
+    statusLabel.Position = UDim2.new(0.05, 0, 0.92, 0)
     statusLabel.BackgroundTransparency = 1
     statusLabel.Text = "📊 Pronto"
     statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
@@ -706,11 +921,11 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - EDITÁVEL")
+print("  ✧ SIX SEVEN - COMPLETO")
 print("========================================")
-print("  📌 Digite o valor no campo")
-print("  📌 Use + e - para ajustar")
+print("  📌 Velocidade e Pulo (editável)")
 print("  📌 ESP e Auto Capture")
+print("  📌 Teleporte para Ilhas")
 print("========================================")
 
 pcall(CreateMenu)
@@ -721,17 +936,4 @@ AtualizarVelocidade()
 AtualizarJump()
 
 Player.CharacterAdded:Connect(function(newChar)
-    Character = newChar
-    RootPart = newChar:FindFirstChild("HumanoidRootPart")
-    Humanoid = newChar:FindFirstChild("Humanoid")
-    task.wait(1)
-    AtualizarVelocidade()
-    AtualizarJump()
-    if espActive then
-        UpdateESP()
-    end
-end)
-
-print("========================================")
-print("  ✅ PRONTO!")
-print("========================================")
+    Character
