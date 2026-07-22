@@ -1,15 +1,14 @@
 --[[
-    SIX SEVEN - VERSÃO FINAL (CORRIGIDA)
+    SIX SEVEN - VERSÃO MANUAL (FUNCIONAL)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - FINAL...")
+print("🔄 CARREGANDO SIX SEVEN - MANUAL...")
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local Player = Players.LocalPlayer
@@ -64,7 +63,7 @@ local function EncontrarPets()
 end
 
 -- ========================================
--- FUNÇÕES DE CLIQUE E TECLA
+-- FUNÇÕES DE CLIQUE
 -- ========================================
 local function Clicar()
     pcall(function()
@@ -89,7 +88,7 @@ local function PressionarTecla(tecla)
 end
 
 -- ========================================
--- FUNÇÃO PARA CAPTURAR PET (SIMPLIFICADA)
+-- FUNÇÃO PARA CAPTURAR PET
 -- ========================================
 local function CapturarPet(pet)
     if processando then return false end
@@ -106,7 +105,7 @@ local function CapturarPet(pet)
     print("\n🎯 CAPTURANDO: " .. pet.Name)
     status.Text = "🎯 Capturando: " .. pet.Name
     
-    -- 1. TELEPORTA
+    -- 1. TELEPORTA PARA O PET
     if RootPart then
         pcall(function()
             RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 0))
@@ -115,10 +114,12 @@ local function CapturarPet(pet)
     end
     
     -- 2. EQUIPA LASSO (TECLA 1)
+    print("🎯 Equipando lasso (tecla 1)...")
     PressionarTecla(Enum.KeyCode.One)
     task.wait(0.3)
     
     -- 3. MIRA NO PET
+    print("🎯 Mirando no pet...")
     local camera = Workspace.CurrentCamera
     if camera then
         local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
@@ -141,11 +142,13 @@ local function CapturarPet(pet)
         end
     end
     
-    -- 4. LANÇA LASSO (CLIQUE)
+    -- 4. LANÇA LASSO
+    print("🎯 Lançando lasso...")
     Clicar()
     task.wait(0.5)
     
-    -- 5. CLICA RÁPIDO PARA ENCHER A BARRA
+    -- 5. CLICA 80x PARA ENCHER A BARRA
+    print("🖱️ Enchendo a barra (" .. Config.TotalClicks .. " cliques)...")
     for i = 1, Config.TotalClicks do
         Clicar()
         if i % 10 == 0 then
@@ -156,7 +159,7 @@ local function CapturarPet(pet)
     
     task.wait(0.5)
     
-    -- 6. VERIFICA CAPTURA (SEM CAUSAR ERRO)
+    -- 6. VERIFICA SE CAPTUROU
     local pasta = Player:FindFirstChild("Pets")
     if pasta then
         for _, p in pairs(pasta:GetChildren()) do
@@ -258,7 +261,7 @@ local function AtualizarESP()
 end
 
 -- ========================================
--- CRIAR MENU COM BOTÃO MINIMIZAR
+-- CRIAR MENU
 -- ========================================
 local function CriarMenu()
     local gui = Instance.new("ScreenGui")
@@ -266,7 +269,6 @@ local function CriarMenu()
     gui.Parent = CoreGui
     gui.ResetOnSpawn = false
     
-    -- Frame principal
     local frame = Instance.new("Frame")
     frame.Parent = gui
     frame.Size = UDim2.new(0, 260, 0, 220)
@@ -293,23 +295,23 @@ local function CriarMenu()
     titulo.Font = Enum.Font.GothamBold
     titulo.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Botão MINIMIZAR (─)
-    local btnMinimizar = Instance.new("TextButton")
-    btnMinimizar.Parent = frame
-    btnMinimizar.Size = UDim2.new(0, 30, 0, 30)
-    btnMinimizar.Position = UDim2.new(1, -35, 0, 2)
-    btnMinimizar.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    btnMinimizar.Text = "─"
-    btnMinimizar.TextColor3 = Color3.new(1, 1, 1)
-    btnMinimizar.TextSize = 18
-    btnMinimizar.Font = Enum.Font.GothamBold
-    btnMinimizar.BorderSizePixel = 0
+    -- Minimizar
+    local btnMin = Instance.new("TextButton")
+    btnMin.Parent = frame
+    btnMin.Size = UDim2.new(0, 30, 0, 30)
+    btnMin.Position = UDim2.new(1, -35, 0, 2)
+    btnMin.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    btnMin.Text = "─"
+    btnMin.TextColor3 = Color3.new(1, 1, 1)
+    btnMin.TextSize = 18
+    btnMin.Font = Enum.Font.GothamBold
+    btnMin.BorderSizePixel = 0
     
     local minCorner = Instance.new("UICorner")
-    minCorner.Parent = btnMinimizar
+    minCorner.Parent = btnMin
     minCorner.CornerRadius = UDim.new(0, 6)
     
-    -- Botão FECHAR (✕)
+    -- Fechar
     local btnFechar = Instance.new("TextButton")
     btnFechar.Parent = frame
     btnFechar.Size = UDim2.new(0, 30, 0, 30)
@@ -336,7 +338,7 @@ local function CriarMenu()
     info.TextSize = 12
     info.Font = Enum.Font.Gotham
     
-    -- Container dos botões
+    -- Container
     local container = Instance.new("Frame")
     container.Parent = frame
     container.Size = UDim2.new(0.9, 0, 0.5, 0)
@@ -348,7 +350,7 @@ local function CriarMenu()
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 8)
     
-    -- Botão ESP
+    -- ESP
     local btnESP = Instance.new("TextButton")
     btnESP.Parent = container
     btnESP.Size = UDim2.new(1, 0, 0, 30)
@@ -363,7 +365,7 @@ local function CriarMenu()
     espCorner.Parent = btnESP
     espCorner.CornerRadius = UDim.new(0, 8)
     
-    -- Botão AUTO
+    -- AUTO
     local btnAuto = Instance.new("TextButton")
     btnAuto.Parent = container
     btnAuto.Size = UDim2.new(1, 0, 0, 30)
@@ -378,7 +380,7 @@ local function CriarMenu()
     autoCorner.Parent = btnAuto
     autoCorner.CornerRadius = UDim.new(0, 8)
     
-    -- Botão TESTE
+    -- TESTE
     local btnTeste = Instance.new("TextButton")
     btnTeste.Parent = container
     btnTeste.Size = UDim2.new(1, 0, 0, 30)
@@ -404,7 +406,7 @@ local function CriarMenu()
     statusLabel.TextSize = 12
     statusLabel.Font = Enum.Font.Gotham
     
-    -- Botão FLUTUANTE (quando minimizado)
+    -- Botão flutuante
     local btnFloat = Instance.new("TextButton")
     btnFloat.Parent = gui
     btnFloat.Size = UDim2.new(0, 45, 0, 45)
@@ -421,7 +423,6 @@ local function CriarMenu()
     floatCorner.Parent = btnFloat
     floatCorner.CornerRadius = UDim.new(1, 0)
     
-    -- Funções
     local function Minimizar()
         frame.Visible = false
         btnFloat.Visible = true
@@ -434,13 +435,13 @@ local function CriarMenu()
         menuAberto = true
     end
     
-    btnMinimizar.MouseButton1Click:Connect(Minimizar)
+    btnMin.MouseButton1Click:Connect(Minimizar)
     btnFloat.MouseButton1Click:Connect(Abrir)
     btnFechar.MouseButton1Click:Connect(function()
         gui:Destroy()
     end)
     
-    -- Eventos dos botões
+    -- Eventos
     btnESP.MouseButton1Click:Connect(function()
         espAtivo = not espAtivo
         btnESP.Text = espAtivo and "🟢 ESP" or "🔴 ESP"
@@ -495,17 +496,17 @@ end
 -- INICIAR
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - VERSÃO FINAL")
+print("  ✧ SIX SEVEN - VERSÃO MANUAL")
 print("========================================")
-print("  📌 BOTÕES:")
-print("  ─  Minimizar")
-print("  ✕  Fechar")
-print("  📌 FUNÇÕES:")
-print("  ESP: Mostra pets em verde")
-print("  AUTO: Captura automática")
-print("  TESTAR: Testa uma captura")
+print("  📌 COMO FUNCIONA:")
+print("  1. Teleporta para o pet")
+print("  2. Equipa lasso (tecla 1)")
+print("  3. Mira no pet")
+print("  4. Lança lasso (clique)")
+print("  5. " .. Config.TotalClicks .. " cliques na tela")
 print("========================================")
 
 CriarMenu()
 
 print("✅ SCRIPT CARREGADO!")
+print("📌 Teste com o botão TESTAR")
