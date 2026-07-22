@@ -1,4 +1,4 @@
--- SIX SEVEN - VERSÃO COMPLETA COM + E -
+-- SIX SEVEN - VERSÃO FINAL COMPLETA
 print("🚀 INICIANDO SIX SEVEN...")
 
 -- ===== SERVIÇOS =====
@@ -42,7 +42,6 @@ local function FindPets()
             if hrp then
                 local currentPos = hrp.Position
                 
-                -- Verifica se o pet se moveu
                 if petPositions[obj] then
                     local oldPos = petPositions[obj]
                     local dist = (currentPos - oldPos).Magnitude
@@ -183,7 +182,6 @@ local function UpdateESP()
         end
     end
     
-    -- Remove ESP de pets que não existem mais
     local currentPets = {}
     for _, pet in pairs(pets) do
         currentPets[pet] = true
@@ -202,7 +200,6 @@ local function CreateMenu()
     screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
     
-    -- Frame principal
     local main = Instance.new("Frame")
     main.Parent = screenGui
     main.Size = UDim2.new(0, 210, 0, 310)
@@ -223,7 +220,6 @@ local function CreateMenu()
     stroke.Thickness = 1
     stroke.Transparency = 0.3
     
-    -- Título
     local title = Instance.new("TextLabel")
     title.Parent = main
     title.Size = UDim2.new(1, -50, 0, 30)
@@ -235,7 +231,6 @@ local function CreateMenu()
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Fechar
     local close = Instance.new("TextButton")
     close.Parent = main
     close.Size = UDim2.new(0, 22, 0, 22)
@@ -251,7 +246,6 @@ local function CreateMenu()
     closeCorner.Parent = close
     closeCorner.CornerRadius = UDim.new(0, 5)
     
-    -- Separador
     local sep = Instance.new("Frame")
     sep.Parent = main
     sep.Size = UDim2.new(0.9, 0, 0, 1)
@@ -259,7 +253,6 @@ local function CreateMenu()
     sep.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     sep.BackgroundTransparency = 0.5
     
-    -- Container
     local container = Instance.new("Frame")
     container.Parent = main
     container.Size = UDim2.new(0.92, 0, 0.75, 0)
@@ -278,7 +271,6 @@ local function CreateMenu()
         frame.Size = UDim2.new(1, 0, 0, 32)
         frame.BackgroundTransparency = 1
         
-        -- Label
         local label = Instance.new("TextLabel")
         label.Parent = frame
         label.Size = UDim2.new(0.4, 0, 1, 0)
@@ -290,7 +282,6 @@ local function CreateMenu()
         label.Font = Enum.Font.GothamBold
         label.TextXAlignment = Enum.TextXAlignment.Left
         
-        -- Botão -
         local btnMinus = Instance.new("TextButton")
         btnMinus.Parent = frame
         btnMinus.Size = UDim2.new(0, 22, 0, 22)
@@ -306,7 +297,6 @@ local function CreateMenu()
         minusCorner.Parent = btnMinus
         minusCorner.CornerRadius = UDim.new(0, 4)
         
-        -- Valor
         local valueBox = Instance.new("TextBox")
         valueBox.Parent = frame
         valueBox.Size = UDim2.new(0, 35, 0, 22)
@@ -324,7 +314,6 @@ local function CreateMenu()
         valueCorner.Parent = valueBox
         valueCorner.CornerRadius = UDim.new(0, 4)
         
-        -- Botão +
         local btnPlus = Instance.new("TextButton")
         btnPlus.Parent = frame
         btnPlus.Size = UDim2.new(0, 22, 0, 22)
@@ -343,10 +332,12 @@ local function CreateMenu()
         local currentValue = defaultValue
         
         local function UpdateValue(newValue)
-            newValue = math.round(math.clamp(newValue, minVal, maxVal) / step) * step
             if step < 1 then
                 newValue = math.round(newValue * 2) / 2
+            else
+                newValue = math.round(newValue / step) * step
             end
+            newValue = math.clamp(newValue, minVal, maxVal)
             currentValue = newValue
             valueBox.Text = tostring(newValue)
             callback(newValue)
@@ -375,19 +366,16 @@ local function CreateMenu()
     end
     
     -- ===== SLIDERS =====
-    -- Velocidade
     CreateSlider("🏃 Velocidade", config.speed, 0, 100, 5, function(v)
         config.speed = v
         ApplySpeed()
     end)
     
-    -- Pulo
     CreateSlider("🦘 Pulo", config.jump, 0, 100, 5, function(v)
         config.jump = v
         ApplyJump()
     end)
     
-    -- Tempo (1-5 segundos, passo 0.5)
     CreateSlider("⏱️ Tempo (1-5s)", config.countdownTime, 1, 5, 0.5, function(v)
         config.countdownTime = v
         print("⏱️ Tempo ajustado: " .. v .. "s")
@@ -474,7 +462,6 @@ local function CreateMenu()
                             config.petsCapturados[target] = true
                             print("✅ " .. target.Name .. " capturado!")
                             
-                            -- Mostra contador
                             if countdownLabel then
                                 countdownLabel.Parent.Visible = true
                                 for i = config.countdownTime, 1, -1 do
@@ -571,14 +558,12 @@ local function CreateMenu()
             local count = #FindPets()
             status.Text = "📊 Pets: " .. count .. " | ESP: " .. (config.espOn and "ON" or "OFF")
             
-            -- Atualiza ESP automaticamente
             if config.espOn then
                 UpdateESP()
             end
         end
     end)
     
-    -- Monitora novos pets
     workspace.DescendantAdded:Connect(function(obj)
         if config.espOn and obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
@@ -594,7 +579,7 @@ end
 
 -- ===== INICIAR =====
 print("========================================")
-print("  ✧ SIX SEVEN - COMPLETO")
+print("  ✧ SIX SEVEN - FINAL")
 print("========================================")
 print("  ✅ Botões + e - para ajustar")
 print("  ✅ ESP destaca pets em movimento")
