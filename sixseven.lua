@@ -3,7 +3,7 @@
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - EDITÁVEL...")
+print("🔄 CARREGANDO SIX SEVEN...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -24,7 +24,7 @@ local Settings = {
         Enabled = false, 
         Delay = 5.0,
         TeleportDelay = 0.3,
-        CountdownTime = 5  -- Tempo do contador (1-5 segundos)
+        CountdownTime = 5
     },
     ESP = {
         Enabled = false,
@@ -44,11 +44,8 @@ local autoCaptureRunning = false
 local capturedPets = {}
 local espObjects = {}
 local petPositions = {}
-local menuAberto = true
-
--- Variáveis do contador
 local countdownActive = false
-local countdownLabel = nil  -- Label do contador
+local countdownLabel = nil
 
 -- ========================================
 -- FUNÇÃO PARA ENCONTRAR PETS
@@ -151,18 +148,18 @@ local function ClickOnPet(pet)
     local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
     if not onScreen then return false end
     
+    local success = false
     pcall(function()
         local mouse = Player:GetMouse()
         if mouse then
             mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
             task.wait(0.1)
             mouse.Button1Click()
-            print("🖱️ Clique em: " .. pet.Name)
-            return true
+            success = true
         end
     end)
     
-    return false
+    return success
 end
 
 -- ========================================
@@ -239,20 +236,17 @@ local function ShowCountdown(seconds)
 end
 
 -- ========================================
--- LOOP AUTO CAPTURE COM CONTADOR AJUSTÁVEL
+-- LOOP AUTO CAPTURE
 -- ========================================
 local function AutoCaptureLoop()
     while autoCapture and autoCaptureRunning do
-        task.spawn(function()
-            local pets = FindAllPets()
-            local target = nil
-            local minDist = math.huge
-            
-            if #pets == 0 then
-                task.wait(0.5)
-                return
-            end
-            
+        local pets = FindAllPets()
+        local target = nil
+        local minDist = math.huge
+        
+        if #pets == 0 then
+            task.wait(0.5)
+        else
             for _, pet in pairs(pets) do
                 if not capturedPets[pet] then
                     local hrp = pet:FindFirstChild("HumanoidRootPart")
@@ -273,7 +267,6 @@ local function AutoCaptureLoop()
                     BringPetToBase(target)
                     print("✅ " .. target.Name .. " capturado!")
                     
-                    -- Mostra contador com o tempo configurado
                     if autoCapture and autoCaptureRunning then
                         ShowCountdown(Settings.AutoCapture.CountdownTime)
                     end
@@ -282,7 +275,7 @@ local function AutoCaptureLoop()
             else
                 task.wait(0.5)
             end
-        end)
+        end
         task.wait(0.1)
     end
 end
@@ -339,8 +332,6 @@ local function CreateESP(pet)
         Label = label,
         DistLabel = distLabel
     }
-    
-    print("✅ ESP criado para: " .. pet.Name)
 end
 
 local function RemoveESP(pet)
@@ -408,7 +399,6 @@ local function StartMonitoring()
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
                 local name = obj.Name:lower()
                 if not name:find("npc") and not name:find("humano") and not name:find("personagem") then
-                    print("🔍 Novo pet: " .. obj.Name)
                     if espActive then
                         task.wait(0.1)
                         UpdateESP()
@@ -420,223 +410,7 @@ local function StartMonitoring()
 end
 
 -- ========================================
--- CRIAR SELEÇÃO DE TEMPO (1-5 segundos) - MELHORADA
--- ========================================
-local function CreateTimeSelector(parent, labelText, defaultValue, minValue, maxValue, callback)
-    local frame = Instance.new("Frame")
-    frame.Parent = parent
-    frame.Size = UDim2.new(1, 0, 0, 34)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
-    frame.BackgroundTransparency = 0.3
-    frame.BorderSizePixel = 0
-    
-    local corner = Instance.new("UICorner")
-    corner.Parent = frame
-    corner.CornerRadius = UDim.new(0, 6)
-
-    -- Label
-    local label = Instance.new("TextLabel")
-    label.Parent = frame
-    label.Size = UDim2.new(0.45, 0, 1, 0)
-    label.Position = UDim2.new(0, 6, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = "⏱️ " .. labelText
-    label.TextColor3 = Color3.fromRGB(200, 200, 255)
-    label.TextSize = 12
-    label.Font = Enum.Font.GothamBold
-    label.TextXAlignment = Enum.TextXAlignment.Left
-
-    -- Botão -
-    local btnMinus = Instance.new("TextButton")
-    btnMinus.Parent = frame
-    btnMinus.Size = UDim2.new(0, 24, 0, 24)
-    btnMinus.Position = UDim2.new(0.7, 0, 0.5, -12)
-    btnMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    btnMinus.Text = "−"
-    btnMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnMinus.TextSize = 16
-    btnMinus.Font = Enum.Font.GothamBold
-    btnMinus.BorderSizePixel = 0
-    
-    local minusCorner = Instance.new("UICorner")
-    minusCorner.Parent = btnMinus
-    minusCorner.CornerRadius = UDim.new(0, 4)
-
-    -- Campo de texto
-    local textBox = Instance.new("TextBox")
-    textBox.Parent = frame
-    textBox.Size = UDim2.new(0, 32, 0, 24)
-    textBox.Position = UDim2.new(0.82, 0, 0.5, -12)
-    textBox.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
-    textBox.Text = tostring(defaultValue) .. "s"
-    textBox.TextColor3 = Color3.fromRGB(255, 200, 100)
-    textBox.TextSize = 14
-    textBox.Font = Enum.Font.GothamBold
-    textBox.TextXAlignment = Enum.TextXAlignment.Center
-    textBox.BorderSizePixel = 0
-    textBox.ClearTextOnFocus = false
-    
-    local textCorner = Instance.new("UICorner")
-    textCorner.Parent = textBox
-    textCorner.CornerRadius = UDim.new(0, 4)
-
-    -- Botão +
-    local btnPlus = Instance.new("TextButton")
-    btnPlus.Parent = frame
-    btnPlus.Size = UDim2.new(0, 24, 0, 24)
-    btnPlus.Position = UDim2.new(0.92, 0, 0.5, -12)
-    btnPlus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    btnPlus.Text = "+"
-    btnPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnPlus.TextSize = 16
-    btnPlus.Font = Enum.Font.GothamBold
-    btnPlus.BorderSizePixel = 0
-    
-    local plusCorner = Instance.new("UICorner")
-    plusCorner.Parent = btnPlus
-    plusCorner.CornerRadius = UDim.new(0, 4)
-
-    local currentValue = defaultValue
-
-    local function UpdateValue(newValue)
-        newValue = math.round(math.clamp(newValue, minValue, maxValue) * 2) / 2  -- Arredonda para 0.5
-        currentValue = newValue
-        textBox.Text = tostring(newValue) .. "s"
-        callback(newValue)
-    end
-
-    btnMinus.MouseButton1Click:Connect(function()
-        UpdateValue(currentValue - 0.5)
-    end)
-
-    btnPlus.MouseButton1Click:Connect(function()
-        UpdateValue(currentValue + 0.5)
-    end)
-
-    textBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            local num = tonumber(string.match(textBox.Text, "([%d.]+)"))
-            if num then
-                UpdateValue(num)
-            else
-                textBox.Text = tostring(currentValue) .. "s"
-            end
-        end
-    end)
-
-    return frame
-end
-
--- ========================================
--- CRIAR CAMPO EDITÁVEL PADRÃO
--- ========================================
-local function CreateEditableField(parent, labelText, defaultValue, minValue, maxValue, callback)
-    local frame = Instance.new("Frame")
-    frame.Parent = parent
-    frame.Size = UDim2.new(1, 0, 0, 34)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 18, 30)
-    frame.BackgroundTransparency = 0.3
-    frame.BorderSizePixel = 0
-    
-    local corner = Instance.new("UICorner")
-    corner.Parent = frame
-    corner.CornerRadius = UDim.new(0, 6)
-
-    -- Label
-    local label = Instance.new("TextLabel")
-    label.Parent = frame
-    label.Size = UDim2.new(0.35, 0, 1, 0)
-    label.Position = UDim2.new(0, 6, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = labelText
-    label.TextColor3 = Color3.fromRGB(200, 200, 255)
-    label.TextSize = 12
-    label.Font = Enum.Font.GothamBold
-    label.TextXAlignment = Enum.TextXAlignment.Left
-
-    -- Botão -
-    local btnMinus = Instance.new("TextButton")
-    btnMinus.Parent = frame
-    btnMinus.Size = UDim2.new(0, 24, 0, 24)
-    btnMinus.Position = UDim2.new(0.65, 0, 0.5, -12)
-    btnMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    btnMinus.Text = "−"
-    btnMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnMinus.TextSize = 16
-    btnMinus.Font = Enum.Font.GothamBold
-    btnMinus.BorderSizePixel = 0
-    
-    local minusCorner = Instance.new("UICorner")
-    minusCorner.Parent = btnMinus
-    minusCorner.CornerRadius = UDim.new(0, 4)
-
-    -- Campo de texto (editável)
-    local textBox = Instance.new("TextBox")
-    textBox.Parent = frame
-    textBox.Size = UDim2.new(0, 35, 0, 24)
-    textBox.Position = UDim2.new(0.77, 0, 0.5, -12)
-    textBox.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
-    textBox.Text = tostring(defaultValue)
-    textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    textBox.TextSize = 13
-    textBox.Font = Enum.Font.GothamBold
-    textBox.TextXAlignment = Enum.TextXAlignment.Center
-    textBox.BorderSizePixel = 0
-    textBox.ClearTextOnFocus = false
-    
-    local textCorner = Instance.new("UICorner")
-    textCorner.Parent = textBox
-    textCorner.CornerRadius = UDim.new(0, 4)
-
-    -- Botão +
-    local btnPlus = Instance.new("TextButton")
-    btnPlus.Parent = frame
-    btnPlus.Size = UDim2.new(0, 24, 0, 24)
-    btnPlus.Position = UDim2.new(0.9, 0, 0.5, -12)
-    btnPlus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    btnPlus.Text = "+"
-    btnPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnPlus.TextSize = 16
-    btnPlus.Font = Enum.Font.GothamBold
-    btnPlus.BorderSizePixel = 0
-    
-    local plusCorner = Instance.new("UICorner")
-    plusCorner.Parent = btnPlus
-    plusCorner.CornerRadius = UDim.new(0, 4)
-
-    local currentValue = defaultValue
-
-    local function UpdateValue(newValue)
-        newValue = math.round(math.clamp(newValue, minValue, maxValue))
-        currentValue = newValue
-        textBox.Text = tostring(newValue)
-        callback(newValue)
-    end
-
-    btnMinus.MouseButton1Click:Connect(function()
-        UpdateValue(currentValue - 5)
-    end)
-
-    btnPlus.MouseButton1Click:Connect(function()
-        UpdateValue(currentValue + 5)
-    end)
-
-    textBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            local num = tonumber(textBox.Text)
-            if num then
-                UpdateValue(num)
-            else
-                textBox.Text = tostring(currentValue)
-            end
-        end
-    end)
-
-    return frame
-end
-
--- ========================================
--- MENU COMPLETO
+-- CRIAR MENU SIMPLIFICADO
 -- ========================================
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
@@ -645,11 +419,11 @@ local function CreateMenu()
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Frame principal - AUMENTADO
+    -- Frame principal
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 240, 0, 400)  -- Aumentei bastante
-    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -200)
+    mainFrame.Size = UDim2.new(0, 220, 0, 320)
+    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -160)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -699,54 +473,114 @@ local function CreateMenu()
     local sep = Instance.new("Frame")
     sep.Parent = mainFrame
     sep.Size = UDim2.new(0.9, 0, 0, 1)
-    sep.Position = UDim2.new(0.05, 0, 0.1, 0)
+    sep.Position = UDim2.new(0.05, 0, 0.12, 0)
     sep.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
     sep.BackgroundTransparency = 0.5
 
-    -- Container dos botões
+    -- Container
     local container = Instance.new("Frame")
     container.Parent = mainFrame
-    container.Size = UDim2.new(0.92, 0, 0.76, 0)
-    container.Position = UDim2.new(0.04, 0, 0.14, 0)
+    container.Size = UDim2.new(0.9, 0, 0.7, 0)
+    container.Position = UDim2.new(0.05, 0, 0.16, 0)
     container.BackgroundTransparency = 1
 
     local layout = Instance.new("UIListLayout")
     layout.Parent = container
-    layout.Padding = UDim.new(0, 6)
+    layout.Padding = UDim.new(0, 4)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
 
-    -- ========================================
-    -- CAMPO VELOCIDADE
-    -- ========================================
-    CreateEditableField(container, "🏃 Velocidade", Settings.Speed, 0, 100, function(value)
-        Settings.Speed = value
-        AtualizarVelocidade()
+    -- Velocidade
+    local speedFrame = Instance.new("Frame")
+    speedFrame.Parent = container
+    speedFrame.Size = UDim2.new(1, 0, 0, 32)
+    speedFrame.BackgroundTransparency = 1
+    
+    local speedLabel = Instance.new("TextLabel")
+    speedLabel.Parent = speedFrame
+    speedLabel.Size = UDim2.new(0.4, 0, 1, 0)
+    speedLabel.BackgroundTransparency = 1
+    speedLabel.Text = "🏃 Velocidade"
+    speedLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    speedLabel.TextSize = 12
+    speedLabel.Font = Enum.Font.GothamBold
+    speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local speedBox = Instance.new("TextBox")
+    speedBox.Parent = speedFrame
+    speedBox.Size = UDim2.new(0, 40, 0, 24)
+    speedBox.Position = UDim2.new(0.7, 0, 0.5, -12)
+    speedBox.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
+    speedBox.Text = tostring(Settings.Speed)
+    speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    speedBox.TextSize = 13
+    speedBox.Font = Enum.Font.GothamBold
+    speedBox.TextXAlignment = Enum.TextXAlignment.Center
+    speedBox.BorderSizePixel = 0
+    
+    speedBox.FocusLost:Connect(function()
+        local num = tonumber(speedBox.Text)
+        if num then
+            Settings.Speed = math.clamp(num, 0, 100)
+            speedBox.Text = tostring(Settings.Speed)
+            AtualizarVelocidade()
+        else
+            speedBox.Text = tostring(Settings.Speed)
+        end
     end)
 
-    -- ========================================
-    -- CAMPO JUMP
-    -- ========================================
-    CreateEditableField(container, "🦘 Pulo", Settings.Jump, 0, 100, function(value)
-        Settings.Jump = value
-        AtualizarJump()
+    -- Pulo
+    local jumpFrame = Instance.new("Frame")
+    jumpFrame.Parent = container
+    jumpFrame.Size = UDim2.new(1, 0, 0, 32)
+    jumpFrame.BackgroundTransparency = 1
+    
+    local jumpLabel = Instance.new("TextLabel")
+    jumpLabel.Parent = jumpFrame
+    jumpLabel.Size = UDim2.new(0.4, 0, 1, 0)
+    jumpLabel.BackgroundTransparency = 1
+    jumpLabel.Text = "🦘 Pulo"
+    jumpLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    jumpLabel.TextSize = 12
+    jumpLabel.Font = Enum.Font.GothamBold
+    jumpLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local jumpBox = Instance.new("TextBox")
+    jumpBox.Parent = jumpFrame
+    jumpBox.Size = UDim2.new(0, 40, 0, 24)
+    jumpBox.Position = UDim2.new(0.7, 0, 0.5, -12)
+    jumpBox.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
+    jumpBox.Text = tostring(Settings.Jump)
+    jumpBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    jumpBox.TextSize = 13
+    jumpBox.Font = Enum.Font.GothamBold
+    jumpBox.TextXAlignment = Enum.TextXAlignment.Center
+    jumpBox.BorderSizePixel = 0
+    
+    jumpBox.FocusLost:Connect(function()
+        local num = tonumber(jumpBox.Text)
+        if num then
+            Settings.Jump = math.clamp(num, 0, 100)
+            jumpBox.Text = tostring(Settings.Jump)
+            AtualizarJump()
+        else
+            jumpBox.Text = tostring(Settings.Jump)
+        end
     end)
 
-    -- ========================================
-    -- BOTÃO ESP
-    -- ========================================
+    -- Botão ESP
     local espBtn = Instance.new("TextButton")
     espBtn.Parent = container
-    espBtn.Size = UDim2.new(1, 0, 0, 32)
+    espBtn.Size = UDim2.new(1, 0, 0, 28)
     espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     espBtn.Text = "🔴 ESP: OFF"
     espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    espBtn.TextSize = 14
+    espBtn.TextSize = 13
     espBtn.Font = Enum.Font.GothamBold
     espBtn.BorderSizePixel = 0
     
     local espCorner = Instance.new("UICorner")
     espCorner.Parent = espBtn
-    espCorner.CornerRadius = UDim.new(0, 6)
+    espCorner.CornerRadius = UDim.new(0, 5)
 
     espBtn.MouseButton1Click:Connect(function()
         espActive = not espActive
@@ -762,22 +596,20 @@ local function CreateMenu()
         end
     end)
 
-    -- ========================================
-    -- BOTÃO AUTO
-    -- ========================================
+    -- Botão AUTO
     local autoBtn = Instance.new("TextButton")
     autoBtn.Parent = container
-    autoBtn.Size = UDim2.new(1, 0, 0, 32)
+    autoBtn.Size = UDim2.new(1, 0, 0, 28)
     autoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
     autoBtn.Text = "🔴 AUTO: OFF"
     autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    autoBtn.TextSize = 14
+    autoBtn.TextSize = 13
     autoBtn.Font = Enum.Font.GothamBold
     autoBtn.BorderSizePixel = 0
     
     local autoCorner = Instance.new("UICorner")
     autoCorner.Parent = autoBtn
-    autoCorner.CornerRadius = UDim.new(0, 6)
+    autoCorner.CornerRadius = UDim.new(0, 5)
 
     autoBtn.MouseButton1Click:Connect(function()
         autoCapture = not autoCapture
@@ -797,17 +629,46 @@ local function CreateMenu()
         end
     end)
 
-    -- ========================================
-    -- SELETOR DE TEMPO (1-5 segundos) - NOVO!
-    -- ========================================
-    CreateTimeSelector(container, "Tempo entre pets", Settings.AutoCapture.CountdownTime, 1, 5, function(value)
-        Settings.AutoCapture.CountdownTime = value
-        print("⏱️ Tempo ajustado para: " .. value .. "s")
+    -- Seletor de Tempo
+    local timeFrame = Instance.new("Frame")
+    timeFrame.Parent = container
+    timeFrame.Size = UDim2.new(1, 0, 0, 32)
+    timeFrame.BackgroundTransparency = 1
+    
+    local timeLabel = Instance.new("TextLabel")
+    timeLabel.Parent = timeFrame
+    timeLabel.Size = UDim2.new(0.5, 0, 1, 0)
+    timeLabel.BackgroundTransparency = 1
+    timeLabel.Text = "⏱️ Tempo entre pets"
+    timeLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    timeLabel.TextSize = 12
+    timeLabel.Font = Enum.Font.GothamBold
+    timeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local timeBox = Instance.new("TextBox")
+    timeBox.Parent = timeFrame
+    timeBox.Size = UDim2.new(0, 40, 0, 24)
+    timeBox.Position = UDim2.new(0.7, 0, 0.5, -12)
+    timeBox.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
+    timeBox.Text = tostring(Settings.AutoCapture.CountdownTime) .. "s"
+    timeBox.TextColor3 = Color3.fromRGB(255, 200, 100)
+    timeBox.TextSize = 13
+    timeBox.Font = Enum.Font.GothamBold
+    timeBox.TextXAlignment = Enum.TextXAlignment.Center
+    timeBox.BorderSizePixel = 0
+    
+    timeBox.FocusLost:Connect(function()
+        local num = tonumber(string.match(timeBox.Text, "([%d.]+)"))
+        if num then
+            Settings.AutoCapture.CountdownTime = math.clamp(num, 1, 5)
+            timeBox.Text = tostring(Settings.AutoCapture.CountdownTime) .. "s"
+            print("⏱️ Tempo ajustado para: " .. Settings.AutoCapture.CountdownTime .. "s")
+        else
+            timeBox.Text = tostring(Settings.AutoCapture.CountdownTime) .. "s"
+        end
     end)
 
-    -- ========================================
-    -- CONTADOR NA TELA (grande e centralizado)
-    -- ========================================
+    -- Contador na tela
     local countdownFrame = Instance.new("Frame")
     countdownFrame.Parent = screenGui
     countdownFrame.Size = UDim2.new(0, 150, 0, 80)
@@ -837,12 +698,10 @@ local function CreateMenu()
     countdownLabel.Font = Enum.Font.GothamBold
     countdownLabel.TextScaled = true
 
-    -- ========================================
-    -- STATUS
-    -- ========================================
+    -- Status
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Parent = mainFrame
-    statusLabel.Size = UDim2.new(0.9, 0, 0, 20)
+    statusLabel.Size = UDim2.new(0.9, 0, 0, 18)
     statusLabel.Position = UDim2.new(0.05, 0, 0.9, 0)
     statusLabel.BackgroundTransparency = 1
     statusLabel.Text = "📊 Pronto"
@@ -901,6 +760,31 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - EDITÁVEL")
+print("  ✧ SIX SEVEN")
 print("========================================")
-print("  📌 Digite
+print("  📌 Seletor de tempo: 1s a 5s")
+print("  📌 Digite o valor e aperte Enter")
+print("========================================")
+
+pcall(CreateMenu)
+StartMonitoring()
+
+task.wait(0.5)
+AtualizarVelocidade()
+AtualizarJump()
+
+Player.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    RootPart = newChar:FindFirstChild("HumanoidRootPart")
+    Humanoid = newChar:FindFirstChild("Humanoid")
+    task.wait(1)
+    AtualizarVelocidade()
+    AtualizarJump()
+    if espActive then
+        UpdateESP()
+    end
+end)
+
+print("========================================")
+print("  ✅ PRONTO!")
+print("========================================")
