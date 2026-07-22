@@ -1,9 +1,9 @@
 --[[
-    Six Seven - Versão Estável (Restaurada)
+    Six Seven - Versão Original (ESP funcionando)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - VERSÃO ESTÁVEL...")
+print("🔄 CARREGANDO SIX SEVEN ORIGINAL...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -43,27 +43,7 @@ local petPositions = {}
 local petList = {}
 
 -- ========================================
--- LISTA DE NPCS PARA IGNORAR
--- ========================================
-local npcNames = {
-    "npc", "humano", "personagem", "vendedor", "lojista", 
-    "guarda", "civil", "aldeao", "comerciante", "treinador",
-    "professor", "mestre", "ancião", "mercador", "coruja", "owl"
-}
-
-local function IsNPC(obj)
-    if not obj then return false end
-    local name = obj.Name:lower()
-    for _, npc in pairs(npcNames) do
-        if name:find(npc) then
-            return true
-        end
-    end
-    return false
-end
-
--- ========================================
--- FUNÇÃO PARA ENCONTRAR PETS (IGUAL AO QUE TAVA FUNCIONANDO)
+-- FUNÇÃO PARA ENCONTRAR PETS (ORIGINAL)
 -- ========================================
 local function FindAllPets()
     local pets = {}
@@ -73,10 +53,15 @@ local function FindAllPets()
             if obj == Character then continue end
             if obj == Player.Character then continue end
             if Players:GetPlayerFromCharacter(obj) then continue end
-            if IsNPC(obj) then continue end
             
             local name = obj.Name:lower()
             if name:find("base") or name:find("floor") or name:find("wall") or name:find("ground") then
+                continue
+            end
+            if name:find("npc") or name:find("humano") or name:find("personagem") then
+                continue
+            end
+            if name:find("coruja") or name:find("owl") then
                 continue
             end
             
@@ -130,7 +115,7 @@ local function SmoothTeleport(targetPos)
 end
 
 -- ========================================
--- CLICAR NO PET (SEM USAR LAÇO)
+-- CLICAR NO PET (ORIGINAL)
 -- ========================================
 local function ClickOnPet(pet)
     if not pet then return false end
@@ -158,7 +143,7 @@ local function ClickOnPet(pet)
 end
 
 -- ========================================
--- CAPTURAR PET (SÓ TELEPORTE + CLIQUE)
+-- CAPTURAR PET
 -- ========================================
 local function CapturePet(pet)
     if not pet or not pet:IsA("Model") then return false end
@@ -167,11 +152,9 @@ local function CapturePet(pet)
     
     print("🎯 Capturando: " .. pet.Name)
     
-    -- Teleporta suavemente até o pet
     local targetPos = hrp.Position + Vector3.new(0, 3, 0)
     SmoothTeleport(targetPos)
     
-    -- Clica no pet
     local success = ClickOnPet(pet)
     task.wait(1.0)
     
@@ -254,7 +237,7 @@ local function AutoCaptureLoop()
 end
 
 -- ========================================
--- SISTEMA ESP (IGUAL AO QUE TAVA FUNCIONANDO)
+-- SISTEMA ESP (ORIGINAL - FUNCIONAVA)
 -- ========================================
 local function CreateESP(pet)
     if not pet or not pet:IsA("Model") then return end
@@ -373,7 +356,8 @@ local function StartMonitoring()
     workspace.DescendantAdded:Connect(function(obj)
         if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
             if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
-                if not IsNPC(obj) then
+                local name = obj.Name:lower()
+                if not name:find("npc") and not name:find("humano") and not name:find("personagem") then
                     print("🔍 Novo pet: " .. obj.Name)
                     if espActive then
                         task.wait(0.1)
@@ -396,8 +380,8 @@ local function CreateMenu()
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 300, 0, 220)
-    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -110)
+    mainFrame.Size = UDim2.new(0, 280, 0, 200)
+    mainFrame.Position = UDim2.new(0.5, -140, 0.5, -100)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 40)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 0
@@ -406,28 +390,28 @@ local function CreateMenu()
 
     local corner = Instance.new("UICorner")
     corner.Parent = mainFrame
-    corner.CornerRadius = UDim.new(0, 12)
+    corner.CornerRadius = UDim.new(0, 10)
 
     -- Título
     local title = Instance.new("TextLabel")
     title.Parent = mainFrame
-    title.Size = UDim2.new(1, 0, 0, 35)
+    title.Size = UDim2.new(1, 0, 0, 30)
     title.BackgroundColor3 = Color3.fromRGB(40, 30, 70)
     title.BackgroundTransparency = 0.3
     title.Text = "✧ Six Seven"
     title.TextColor3 = Color3.fromRGB(190, 160, 255)
-    title.TextSize = 18
+    title.TextSize = 16
     title.Font = Enum.Font.GothamBold
 
     local titleCorner = Instance.new("UICorner")
     titleCorner.Parent = title
-    titleCorner.CornerRadius = UDim.new(0, 12)
+    titleCorner.CornerRadius = UDim.new(0, 10)
 
     -- Fechar
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
     closeBtn.Size = UDim2.new(0, 25, 0, 25)
-    closeBtn.Position = UDim2.new(1, -30, 0, 5)
+    closeBtn.Position = UDim2.new(1, -30, 0, 3)
     closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
     closeBtn.BackgroundTransparency = 0.5
     closeBtn.Text = "X"
@@ -443,19 +427,19 @@ local function CreateMenu()
     -- Container
     local content = Instance.new("Frame")
     content.Parent = mainFrame
-    content.Size = UDim2.new(1, -20, 1, -50)
-    content.Position = UDim2.new(0, 10, 0, 40)
+    content.Size = UDim2.new(1, -20, 1, -45)
+    content.Position = UDim2.new(0, 10, 0, 35)
     content.BackgroundTransparency = 1
 
-    -- Botão ESP
+    -- ESP
     local espBtn = Instance.new("TextButton")
     espBtn.Parent = content
-    espBtn.Size = UDim2.new(1, 0, 0, 40)
+    espBtn.Size = UDim2.new(1, 0, 0, 35)
     espBtn.Position = UDim2.new(0, 0, 0, 0)
     espBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
-    espBtn.Text = "🔴 ESP: OFF"
+    espBtn.Text = "🔴 ESP"
     espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    espBtn.TextSize = 16
+    espBtn.TextSize = 15
     espBtn.Font = Enum.Font.GothamBold
     espBtn.BorderSizePixel = 0
 
@@ -465,7 +449,7 @@ local function CreateMenu()
 
     espBtn.MouseButton1Click:Connect(function()
         espActive = not espActive
-        espBtn.Text = espActive and "🟢 ESP: ON" or "🔴 ESP: OFF"
+        espBtn.Text = espActive and "🟢 ESP" or "🔴 ESP"
         espBtn.BackgroundColor3 = espActive and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
         print("ESP:", espActive and "ON" or "OFF")
         if espActive then
@@ -478,15 +462,15 @@ local function CreateMenu()
         end
     end)
 
-    -- Botão Auto Capture
+    -- Auto
     local autoBtn = Instance.new("TextButton")
     autoBtn.Parent = content
-    autoBtn.Size = UDim2.new(1, 0, 0, 40)
-    autoBtn.Position = UDim2.new(0, 0, 0, 50)
+    autoBtn.Size = UDim2.new(1, 0, 0, 35)
+    autoBtn.Position = UDim2.new(0, 0, 0, 40)
     autoBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 100)
-    autoBtn.Text = "🔴 Auto: OFF"
+    autoBtn.Text = "🔴 Auto"
     autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    autoBtn.TextSize = 16
+    autoBtn.TextSize = 15
     autoBtn.Font = Enum.Font.GothamBold
     autoBtn.BorderSizePixel = 0
 
@@ -496,7 +480,7 @@ local function CreateMenu()
 
     autoBtn.MouseButton1Click:Connect(function()
         autoCapture = not autoCapture
-        autoBtn.Text = autoCapture and "🟢 Auto: ON" or "🔴 Auto: OFF"
+        autoBtn.Text = autoCapture and "🟢 Auto" or "🔴 Auto"
         autoBtn.BackgroundColor3 = autoCapture and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(60, 60, 100)
         print("Auto Capture:", autoCapture and "ON" or "OFF")
         if autoCapture then
@@ -512,23 +496,23 @@ local function CreateMenu()
     -- Status
     local statusLabel = Instance.new("TextLabel")
     statusLabel.Parent = content
-    statusLabel.Size = UDim2.new(1, 0, 0, 30)
-    statusLabel.Position = UDim2.new(0, 0, 0, 100)
+    statusLabel.Size = UDim2.new(1, 0, 0, 25)
+    statusLabel.Position = UDim2.new(0, 0, 0, 80)
     statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "📊 Status: Pronto"
+    statusLabel.Text = "📊 Pronto"
     statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
-    statusLabel.TextSize = 13
+    statusLabel.TextSize = 12
     statusLabel.Font = Enum.Font.Gotham
 
-    -- Botão flutuante
+    -- Float
     local floatBtn = Instance.new("TextButton")
     floatBtn.Parent = screenGui
-    floatBtn.Size = UDim2.new(0, 45, 0, 45)
-    floatBtn.Position = UDim2.new(0.93, -22, 0.93, -22)
+    floatBtn.Size = UDim2.new(0, 40, 0, 40)
+    floatBtn.Position = UDim2.new(0.93, -20, 0.93, -20)
     floatBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 220)
     floatBtn.Text = "✧"
     floatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    floatBtn.TextSize = 24
+    floatBtn.TextSize = 22
     floatBtn.Font = Enum.Font.GothamBold
     floatBtn.BorderSizePixel = 0
     floatBtn.Visible = false
@@ -550,12 +534,11 @@ local function CreateMenu()
     closeBtn.MouseButton1Click:Connect(CloseMenu)
     floatBtn.MouseButton1Click:Connect(OpenMenu)
 
-    -- Atualiza status
     task.spawn(function()
         while true do
             task.wait(2)
             local count = #FindAllPets()
-            statusLabel.Text = "📊 Pets: " .. count .. " | ESP: " .. (espActive and "ON" or "OFF")
+            statusLabel.Text = "📊 Pets: " .. count
         end
     end)
 
@@ -567,7 +550,7 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - VERSÃO ESTÁVEL")
+print("  ✧ SIX SEVEN - ORIGINAL")
 print("========================================")
 
 pcall(CreateMenu)
@@ -587,5 +570,4 @@ print("========================================")
 print("  ✅ PRONTO!")
 print("  📌 ESP: Mostra pets")
 print("  📌 Auto: Teleporta + Clica")
-print("  📌 Não usa laço (não trava)")
 print("========================================")
