@@ -1,4 +1,4 @@
--[[
+--[[
 	SxONE - Interface (UI Shell)
 	--------------------------------------------------
 	Local: StarterGui > SxONE (LocalScript)
