@@ -1,43 +1,49 @@
--- Exemplo simples de GUI em Roblox (LocalScript, dentro de StarterGui/StarterPlayerScripts)
-
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 
--- 1. Criar o container principal da interface
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "MeuPrimeiroGUI"
+screenGui.Name = "MinhaGUI"
 screenGui.Parent = Player:WaitForChild("PlayerGui")
 
--- 2. Criar um frame (janela) para organizar o conteúdo
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 100)
-frame.Position = UDim2.new(0.5, -100, 0.5, -50)
-frame.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+frame.Size = UDim2.new(0, 220, 0, 140)
+frame.Position = UDim2.new(0.5, -110, 0.5, -70)
+frame.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
 frame.Parent = screenGui
 
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = frame
 
--- 3. Criar o botão
+-- Botão que chama uma função com contador
 local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 150, 0, 40)
-button.Position = UDim2.new(0.5, -75, 0.5, -20)
-button.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
-button.Text = "Clique aqui"
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Size = UDim2.new(0, 160, 0, 40)
+button.Position = UDim2.new(0.5, -80, 0, 20)
+button.Text = "Executar ação"
 button.Font = Enum.Font.GothamBold
-button.TextSize = 16
+button.TextColor3 = Color3.new(1,1,1)
+button.BackgroundColor3 = Color3.fromRGB(80, 130, 220)
 button.Parent = frame
 
-local btnCorner = Instance.new("UICorner")
-btnCorner.CornerRadius = UDim.new(0, 6)
-btnCorner.Parent = button
+local function minhaFuncao()
+    print("Função executada em:", os.date("%H:%M:%S"))
+end
 
--- 4. Conectar a ação ao clique
-local cliques = 0
-button.MouseButton1Click:Connect(function()
-    cliques = cliques + 1
-    button.Text = "Cliques: " .. cliques
-    print("Botão clicado! Total:", cliques)
+button.MouseButton1Click:Connect(minhaFuncao)
+
+-- Toggle (liga/desliga) — padrão comum em GUIs de automação legítimas
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.new(0, 160, 0, 40)
+toggle.Position = UDim2.new(0.5, -80, 0, 70)
+toggle.Text = "Toggle: OFF"
+toggle.Font = Enum.Font.GothamBold
+toggle.TextColor3 = Color3.new(1,1,1)
+toggle.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+toggle.Parent = frame
+
+local ligado = false
+toggle.MouseButton1Click:Connect(function()
+    ligado = not ligado
+    toggle.Text = ligado and "Toggle: ON" or "Toggle: OFF"
+    toggle.BackgroundColor3 = ligado and Color3.fromRGB(60,180,60) or Color3.fromRGB(180,60,60)
 end)
