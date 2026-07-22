@@ -1,20 +1,18 @@
 --[[
-    Six Seven - Ultra Simples
+    Six Seven - FINAL (Não trava o laço)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - ULTRA SIMPLES...")
+print("🔄 CARREGANDO SIX SEVEN - FINAL...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-local Humanoid = Character and Character:FindFirstChild("Humanoid")
 
 -- ========================================
 -- CONFIGURAÇÕES
@@ -83,7 +81,7 @@ local function FindAllPets()
 end
 
 -- ========================================
--- FUNÇÃO PARA CAPTURAR (SÓ CLIQUE)
+-- FUNÇÃO PARA CAPTURAR (SÓ REMOTE - NÃO MEXE NO LAÇO)
 -- ========================================
 local function CapturePet(pet)
     if not pet or isProcessing or capturedPets[pet] then return false end
@@ -106,10 +104,11 @@ local function CapturePet(pet)
         task.wait(0.3)
     end
     
-    -- Tenta capturar via Remote (o mais confiável)
+    -- Tenta capturar via Remote (NÃO MEXE NO LAÇO)
     local remote = ReplicatedStorage:FindFirstChild("CapturePet")
         or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Capture")
         or ReplicatedStorage:FindFirstChild("Events"):FindFirstChild("Capture")
+        or ReplicatedStorage:FindFirstChild("RemoteEvent")
     
     if remote then
         pcall(function() 
@@ -121,26 +120,7 @@ local function CapturePet(pet)
         end)
     end
     
-    -- Fallback: tenta clicar no pet
-    local camera = workspace.CurrentCamera
-    if camera then
-        local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-        if onScreen then
-            pcall(function()
-                local mouse = Player:GetMouse()
-                if mouse then
-                    mouse.Move(Vector2.new(screenPos.X, screenPos.Y))
-                    task.wait(0.1)
-                    mouse.Button1Click()
-                    print("🖱️ Clique: " .. pet.Name)
-                    task.wait(0.5)
-                    isProcessing = false
-                    return true
-                end
-            end)
-        end
-    end
-    
+    -- NÃO TENTA CLICAR - SÓ REMOTE
     isProcessing = false
     return false
 end
@@ -166,6 +146,7 @@ local function BringPetToBase(pet)
     
     local releaseRemote = ReplicatedStorage:FindFirstChild("ReleasePet")
         or ReplicatedStorage:FindFirstChild("DropPet")
+        or ReplicatedStorage:FindFirstChild("RemoteEvents"):FindFirstChild("Release")
     
     if releaseRemote then
         pcall(function() releaseRemote:FireServer(pet) end)
@@ -312,7 +293,7 @@ local function UpdateESP()
 end
 
 -- ========================================
--- MENU SIMPLES
+-- MENU
 -- ========================================
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
@@ -428,6 +409,17 @@ local function CreateMenu()
     statusLabel.TextSize = 13
     statusLabel.Font = Enum.Font.Gotham
 
+    -- Total
+    local totalLabel = Instance.new("TextLabel")
+    totalLabel.Parent = content
+    totalLabel.Size = UDim2.new(1, 0, 0, 25)
+    totalLabel.Position = UDim2.new(0, 0, 0, 135)
+    totalLabel.BackgroundTransparency = 1
+    totalLabel.Text = "🏆 0"
+    totalLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    totalLabel.TextSize = 13
+    totalLabel.Font = Enum.Font.Gotham
+
     -- Float
     local floatBtn = Instance.new("TextButton")
     floatBtn.Parent = screenGui
@@ -459,6 +451,7 @@ local function CreateMenu()
             task.wait(2)
             local count = #FindAllPets()
             statusLabel.Text = "📊 Pets: " .. count
+            totalLabel.Text = "🏆 " .. totalCaptured
         end
     end)
 
@@ -477,22 +470,11 @@ task.spawn(function()
     end
 end)
 
-workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
-        if obj ~= Character and not Players:GetPlayerFromCharacter(obj) then
-            local name = obj.Name:lower()
-            if not name:find("npc") and not name:find("humano") and not name:find("personagem") then
-                print("🔍 Novo pet: " .. obj.Name)
-            end
-        end
-    end
-end)
-
 -- ========================================
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - ULTRA SIMPLES")
+print("  ✧ SIX SEVEN - FINAL")
 print("========================================")
 
 pcall(CreateMenu)
@@ -500,12 +482,12 @@ pcall(CreateMenu)
 Player.CharacterAdded:Connect(function(newChar)
     Character = newChar
     RootPart = newChar:FindFirstChild("HumanoidRootPart")
-    Humanoid = newChar:FindFirstChild("Humanoid")
     print("🔄 Respawnou!")
 end)
 
 print("========================================")
 print("  ✅ PRONTO!")
-print("  📌 ESP: Liga/Desliga")
-print("  📌 Auto: Teleporta + Tenta capturar")
+print("  📌 ESP: Mostra pets")
+print("  📌 Auto: Teleporta + Remote (NÃO MEXE NO LAÇO)")
+print("  📌 O LAÇO NÃO TRAVA MAIS!")
 print("========================================")
