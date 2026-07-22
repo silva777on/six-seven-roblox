@@ -1,9 +1,9 @@
 --[[
-    SIX SEVEN - VERSÃO SIMPLES E FUNCIONAL
+    SIX SEVEN - COMPLETO (Com Campos Editáveis)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - SIMPLES...")
+print("🔄 CARREGANDO SIX SEVEN - EDITÁVEL...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -387,7 +387,109 @@ local function StartMonitoring()
 end
 
 -- ========================================
--- MENU SIMPLES (COM BOTÕES GRANDES)
+-- CRIAR CAMPO EDITÁVEL
+-- ========================================
+local function CreateEditableField(parent, labelText, defaultValue, minValue, maxValue, callback)
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = UDim2.new(1, 0, 0, 32)
+    frame.BackgroundTransparency = 1
+
+    -- Label
+    local label = Instance.new("TextLabel")
+    label.Parent = frame
+    label.Size = UDim2.new(0.35, 0, 1, 0)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = labelText
+    label.TextColor3 = Color3.fromRGB(200, 200, 255)
+    label.TextSize = 12
+    label.Font = Enum.Font.GothamBold
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Botão -
+    local btnMinus = Instance.new("TextButton")
+    btnMinus.Parent = frame
+    btnMinus.Size = UDim2.new(0, 22, 0, 22)
+    btnMinus.Position = UDim2.new(0.65, 0, 0.5, -11)
+    btnMinus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    btnMinus.Text = "−"
+    btnMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnMinus.TextSize = 16
+    btnMinus.Font = Enum.Font.GothamBold
+    btnMinus.BorderSizePixel = 0
+    
+    local minusCorner = Instance.new("UICorner")
+    minusCorner.Parent = btnMinus
+    minusCorner.CornerRadius = UDim.new(0, 4)
+
+    -- Campo de texto (editável)
+    local textBox = Instance.new("TextBox")
+    textBox.Parent = frame
+    textBox.Size = UDim2.new(0, 35, 0, 22)
+    textBox.Position = UDim2.new(0.77, 0, 0.5, -11)
+    textBox.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
+    textBox.Text = tostring(defaultValue)
+    textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textBox.TextSize = 13
+    textBox.Font = Enum.Font.GothamBold
+    textBox.TextXAlignment = Enum.TextXAlignment.Center
+    textBox.BorderSizePixel = 0
+    textBox.ClearTextOnFocus = false
+    
+    local textCorner = Instance.new("UICorner")
+    textCorner.Parent = textBox
+    textCorner.CornerRadius = UDim.new(0, 4)
+
+    -- Botão +
+    local btnPlus = Instance.new("TextButton")
+    btnPlus.Parent = frame
+    btnPlus.Size = UDim2.new(0, 22, 0, 22)
+    btnPlus.Position = UDim2.new(0.9, 0, 0.5, -11)
+    btnPlus.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
+    btnPlus.Text = "+"
+    btnPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnPlus.TextSize = 16
+    btnPlus.Font = Enum.Font.GothamBold
+    btnPlus.BorderSizePixel = 0
+    
+    local plusCorner = Instance.new("UICorner")
+    plusCorner.Parent = btnPlus
+    plusCorner.CornerRadius = UDim.new(0, 4)
+
+    local currentValue = defaultValue
+
+    local function UpdateValue(newValue)
+        newValue = math.round(math.clamp(newValue, minValue, maxValue))
+        currentValue = newValue
+        textBox.Text = tostring(newValue)
+        callback(newValue)
+    end
+
+    btnMinus.MouseButton1Click:Connect(function()
+        UpdateValue(currentValue - 5)
+    end)
+
+    btnPlus.MouseButton1Click:Connect(function()
+        UpdateValue(currentValue + 5)
+    end)
+
+    textBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            local num = tonumber(textBox.Text)
+            if num then
+                UpdateValue(num)
+            else
+                textBox.Text = tostring(currentValue)
+            end
+        end
+    end)
+
+    return frame
+end
+
+-- ========================================
+-- MENU COMPLETO
 -- ========================================
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
@@ -399,8 +501,8 @@ local function CreateMenu()
     -- Frame principal
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
-    mainFrame.Size = UDim2.new(0, 200, 0, 250)
-    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -125)
+    mainFrame.Size = UDim2.new(0, 220, 0, 290)
+    mainFrame.Position = UDim2.new(0.02, 0, 0.5, -145)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 10, 18)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderSizePixel = 0
@@ -457,134 +559,28 @@ local function CreateMenu()
     -- Container dos botões
     local container = Instance.new("Frame")
     container.Parent = mainFrame
-    container.Size = UDim2.new(0.9, 0, 0.75, 0)
+    container.Size = UDim2.new(0.9, 0, 0.7, 0)
     container.Position = UDim2.new(0.05, 0, 0.17, 0)
     container.BackgroundTransparency = 1
 
     local layout = Instance.new("UIListLayout")
     layout.Parent = container
-    layout.Padding = UDim.new(0, 6)
+    layout.Padding = UDim.new(0, 4)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
 
     -- ========================================
-    -- BOTÃO VELOCIDADE
+    -- CAMPO VELOCIDADE
     -- ========================================
-    local speedFrame = Instance.new("Frame")
-    speedFrame.Parent = container
-    speedFrame.Size = UDim2.new(1, 0, 0, 30)
-    speedFrame.BackgroundTransparency = 1
-
-    local speedLabel = Instance.new("TextLabel")
-    speedLabel.Parent = speedFrame
-    speedLabel.Size = UDim2.new(0.6, 0, 1, 0)
-    speedLabel.BackgroundTransparency = 1
-    speedLabel.Text = "🏃 Velocidade: 16"
-    speedLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-    speedLabel.TextSize = 12
-    speedLabel.Font = Enum.Font.GothamBold
-    speedLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-    local speedBtn = Instance.new("TextButton")
-    speedBtn.Parent = speedFrame
-    speedBtn.Size = UDim2.new(0.35, 0, 1, 0)
-    speedBtn.Position = UDim2.new(0.65, 0, 0, 0)
-    speedBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    speedBtn.Text = "+"
-    speedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    speedBtn.TextSize = 16
-    speedBtn.Font = Enum.Font.GothamBold
-    speedBtn.BorderSizePixel = 0
-    
-    local speedCorner = Instance.new("UICorner")
-    speedCorner.Parent = speedBtn
-    speedCorner.CornerRadius = UDim.new(0, 5)
-
-    speedBtn.MouseButton1Click:Connect(function()
-        Settings.Speed = math.min(Settings.Speed + 5, 100)
-        speedLabel.Text = "🏃 Velocidade: " .. Settings.Speed
-        AtualizarVelocidade()
-    end)
-
-    -- Botão diminuir velocidade
-    local speedBtn2 = Instance.new("TextButton")
-    speedBtn2.Parent = speedFrame
-    speedBtn2.Size = UDim2.new(0.2, 0, 1, 0)
-    speedBtn2.Position = UDim2.new(0.45, 0, 0, 0)
-    speedBtn2.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    speedBtn2.Text = "-"
-    speedBtn2.TextColor3 = Color3.fromRGB(255, 255, 255)
-    speedBtn2.TextSize = 16
-    speedBtn2.Font = Enum.Font.GothamBold
-    speedBtn2.BorderSizePixel = 0
-    
-    local speedCorner2 = Instance.new("UICorner")
-    speedCorner2.Parent = speedBtn2
-    speedCorner2.CornerRadius = UDim.new(0, 5)
-
-    speedBtn2.MouseButton1Click:Connect(function()
-        Settings.Speed = math.max(Settings.Speed - 5, 0)
-        speedLabel.Text = "🏃 Velocidade: " .. Settings.Speed
+    CreateEditableField(container, "🏃 Velocidade", Settings.Speed, 0, 100, function(value)
+        Settings.Speed = value
         AtualizarVelocidade()
     end)
 
     -- ========================================
-    -- BOTÃO JUMP
+    -- CAMPO JUMP
     -- ========================================
-    local jumpFrame = Instance.new("Frame")
-    jumpFrame.Parent = container
-    jumpFrame.Size = UDim2.new(1, 0, 0, 30)
-    jumpFrame.BackgroundTransparency = 1
-
-    local jumpLabel = Instance.new("TextLabel")
-    jumpLabel.Parent = jumpFrame
-    jumpLabel.Size = UDim2.new(0.6, 0, 1, 0)
-    jumpLabel.BackgroundTransparency = 1
-    jumpLabel.Text = "🦘 Pulo: 50"
-    jumpLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-    jumpLabel.TextSize = 12
-    jumpLabel.Font = Enum.Font.GothamBold
-    jumpLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-    local jumpBtn = Instance.new("TextButton")
-    jumpBtn.Parent = jumpFrame
-    jumpBtn.Size = UDim2.new(0.35, 0, 1, 0)
-    jumpBtn.Position = UDim2.new(0.65, 0, 0, 0)
-    jumpBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    jumpBtn.Text = "+"
-    jumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    jumpBtn.TextSize = 16
-    jumpBtn.Font = Enum.Font.GothamBold
-    jumpBtn.BorderSizePixel = 0
-    
-    local jumpCorner = Instance.new("UICorner")
-    jumpCorner.Parent = jumpBtn
-    jumpCorner.CornerRadius = UDim.new(0, 5)
-
-    jumpBtn.MouseButton1Click:Connect(function()
-        Settings.Jump = math.min(Settings.Jump + 5, 100)
-        jumpLabel.Text = "🦘 Pulo: " .. Settings.Jump
-        AtualizarJump()
-    end)
-
-    -- Botão diminuir jump
-    local jumpBtn2 = Instance.new("TextButton")
-    jumpBtn2.Parent = jumpFrame
-    jumpBtn2.Size = UDim2.new(0.2, 0, 1, 0)
-    jumpBtn2.Position = UDim2.new(0.45, 0, 0, 0)
-    jumpBtn2.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    jumpBtn2.Text = "-"
-    jumpBtn2.TextColor3 = Color3.fromRGB(255, 255, 255)
-    jumpBtn2.TextSize = 16
-    jumpBtn2.Font = Enum.Font.GothamBold
-    jumpBtn2.BorderSizePixel = 0
-    
-    local jumpCorner2 = Instance.new("UICorner")
-    jumpCorner2.Parent = jumpBtn2
-    jumpCorner2.CornerRadius = UDim.new(0, 5)
-
-    jumpBtn2.MouseButton1Click:Connect(function()
-        Settings.Jump = math.max(Settings.Jump - 5, 0)
-        jumpLabel.Text = "🦘 Pulo: " .. Settings.Jump
+    CreateEditableField(container, "🦘 Pulo", Settings.Jump, 0, 100, function(value)
+        Settings.Jump = value
         AtualizarJump()
     end)
 
@@ -710,7 +706,11 @@ end
 -- INICIALIZAÇÃO
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - SIMPLES")
+print("  ✧ SIX SEVEN - EDITÁVEL")
+print("========================================")
+print("  📌 Digite o valor no campo")
+print("  📌 Use + e - para ajustar")
+print("  📌 ESP e Auto Capture")
 print("========================================")
 
 pcall(CreateMenu)
@@ -734,6 +734,4 @@ end)
 
 print("========================================")
 print("  ✅ PRONTO!")
-print("  📌 Botões + e - para Velocidade e Pulo")
-print("  📌 ESP e Auto Capture")
 print("========================================")
