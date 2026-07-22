@@ -1,40 +1,106 @@
 --[[
-    SIX SEVEN - CAPTURA COM REMOTES (CORRIGIDO)
+    SCRIPT SIMPLES PARA CAPTURAR PETS
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - VERSÃO REMOTE...")
+print("🔄 INICIANDO SCRIPT...")
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-local Humanoid = Character and Character:FindFirstChild("Humanoid")
 
 -- ========================================
--- CONFIGURAÇÕES
+-- CRIAR MENU SIMPLES
 -- ========================================
-local Config = {
-    Delay = 5.0,
-    TotalClicks = 80,
-    ClickSpeed = 0.015,
-    TeleportDelay = 0.3,
-}
+local function CriarMenu()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "SixSeven"
+    gui.Parent = CoreGui
+    gui.ResetOnSpawn = false
+    
+    local frame = Instance.new("Frame")
+    frame.Parent = gui
+    frame.Size = UDim2.new(0, 250, 0, 180)
+    frame.Position = UDim2.new(0.5, -125, 0.5, -90)
+    frame.BackgroundColor3 = Color3.fromRGB(10, 10, 30)
+    frame.BackgroundTransparency = 0.1
+    frame.Active = true
+    frame.Draggable = true
+    frame.Visible = true
+    
+    local corner = Instance.new("UICorner")
+    corner.Parent = frame
+    corner.CornerRadius = UDim.new(0, 12)
+    
+    local titulo = Instance.new("TextLabel")
+    titulo.Parent = frame
+    titulo.Size = UDim2.new(1, 0, 0, 35)
+    titulo.BackgroundColor3 = Color3.fromRGB(80, 0, 200)
+    titulo.BackgroundTransparency = 0.3
+    titulo.Text = "✧ SIX SEVEN"
+    titulo.TextColor3 = Color3.new(1, 1, 1)
+    titulo.TextSize = 18
+    titulo.Font = Enum.Font.GothamBold
+    
+    local botaoESP = Instance.new("TextButton")
+    botaoESP.Parent = frame
+    botaoESP.Size = UDim2.new(0.8, 0, 0, 30)
+    botaoESP.Position = UDim2.new(0.1, 0, 0.3, 0)
+    botaoESP.BackgroundColor3 = Color3.fromRGB(50, 50, 120)
+    botaoESP.Text = "🔴 ESP (OFF)"
+    botaoESP.TextColor3 = Color3.new(1, 1, 1)
+    botaoESP.TextSize = 14
+    botaoESP.Font = Enum.Font.GothamBold
+    botaoESP.BorderSizePixel = 0
+    
+    local espCorner = Instance.new("UICorner")
+    espCorner.Parent = botaoESP
+    espCorner.CornerRadius = UDim.new(0, 8)
+    
+    local botaoAuto = Instance.new("TextButton")
+    botaoAuto.Parent = frame
+    botaoAuto.Size = UDim2.new(0.8, 0, 0, 30)
+    botaoAuto.Position = UDim2.new(0.1, 0, 0.55, 0)
+    botaoAuto.BackgroundColor3 = Color3.fromRGB(50, 50, 120)
+    botaoAuto.Text = "🔴 AUTO (OFF)"
+    botaoAuto.TextColor3 = Color3.new(1, 1, 1)
+    botaoAuto.TextSize = 14
+    botaoAuto.Font = Enum.Font.GothamBold
+    botaoAuto.BorderSizePixel = 0
+    
+    local autoCorner = Instance.new("UICorner")
+    autoCorner.Parent = botaoAuto
+    autoCorner.CornerRadius = UDim.new(0, 8)
+    
+    local status = Instance.new("TextLabel")
+    status.Parent = frame
+    status.Size = UDim2.new(0.9, 0, 0, 20)
+    status.Position = UDim2.new(0.05, 0, 0.8, 0)
+    status.BackgroundTransparency = 1
+    status.Text = "📊 Pronto"
+    status.TextColor3 = Color3.fromRGB(150, 150, 200)
+    status.TextSize = 12
+    status.Font = Enum.Font.Gotham
+    
+    return gui, botaoESP, botaoAuto, status
+end
+
+local gui, btnESP, btnAuto, status = CriarMenu()
 
 -- ========================================
 -- VARIÁVEIS
 -- ========================================
-local autoAtivo = false
 local espAtivo = false
-local processando = false
+local autoAtivo = false
 local capturados = {}
 local totalCapturados = 0
+local processando = false
 
 -- ========================================
 -- FUNÇÃO PARA ENCONTRAR PETS
@@ -50,11 +116,7 @@ local function EncontrarPets()
                 local nome = obj.Name:lower()
                 if not nome:find("base") and not nome:find("floor") and not nome:find("wall") then
                     if not nome:find("npc") and not nome:find("humano") and not nome:find("player") then
-                        if not nome:find("tree") and not nome:find("rock") then
-                            if not nome:find("spawn") and not nome:find("platform") then
-                                table.insert(pets, obj)
-                            end
-                        end
+                        table.insert(pets, obj)
                     end
                 end
             end
@@ -64,88 +126,24 @@ local function EncontrarPets()
 end
 
 -- ========================================
--- FUNÇÃO PARA ENCONTRAR REMOTES
--- ========================================
-local function EncontrarRemote(nome)
-    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            if obj.Name:lower():find(nome:lower()) then
-                return obj
-            end
-        end
-    end
-    return nil
-end
-
--- ========================================
--- FUNÇÕES DE CLIQUE E TECLA
--- ========================================
-local function Clicar()
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
-        task.wait(0.015)
-        VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
-    end)
-end
-
-local function MoverMouse(x, y)
-    pcall(function()
-        VirtualInputManager:SendMouseMovement(x, y, Enum.VirtualKeyMode.Delta, game)
-    end)
-end
-
-local function PressionarTecla(tecla)
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, tecla, false, game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false, tecla, false, game)
-    end)
-end
-
--- ========================================
--- FUNÇÃO PARA CAPTURAR PET VIA REMOTE
--- ========================================
-local function CapturarPorRemote(pet)
-    print("📡 Tentando capturar via Remote...")
-    
-    -- Procura remotes de captura
-    local remotes = {
-        { nome = "CapturePet", obj = EncontrarRemote("Capture") },
-        { nome = "PetEvent", obj = EncontrarRemote("Pet") },
-        { nome = "LassoRope", obj = EncontrarRemote("Lasso") },
-        { nome = "Farm", obj = EncontrarRemote("Farm") },
-    }
-    
-    for _, r in pairs(remotes) do
-        if r.obj then
-            pcall(function()
-                r.obj:FireServer("Capture", pet.Name, pet)
-                print("✅ Remote enviado: " .. r.nome)
-                task.wait(0.3)
-                return true
-            end)
-        end
-    end
-    
-    return false
-end
-
--- ========================================
--- FUNÇÃO PARA CAPTURAR PET
+-- FUNÇÃO PARA CAPTURAR (SIMPLES)
 -- ========================================
 local function CapturarPet(pet)
     if processando then return false end
     if capturados[pet] then return false end
-    if not pet then return false end
-    
-    local hrp = pet:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
+    if not pet or not pet:IsA("Model") then return false end
     
     processando = true
-    print("\n🎯 CAPTURANDO: " .. pet.Name)
+    local hrp = pet:FindFirstChild("HumanoidRootPart")
+    if not hrp then 
+        processando = false
+        return false 
+    end
+    
+    print("🎯 CAPTURANDO: " .. pet.Name)
     status.Text = "🎯 Capturando: " .. pet.Name
     
-    -- 1. Teleporta para o pet
+    -- Teleporta
     if RootPart then
         pcall(function()
             RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 0))
@@ -153,62 +151,59 @@ local function CapturarPet(pet)
         task.wait(0.3)
     end
     
-    -- 2. Equipa o lasso (tecla 1)
-    print("🎯 Equipando lasso...")
-    PressionarTecla(Enum.KeyCode.One)
-    task.wait(0.3)
+    -- Tenta capturar
+    local sucesso = false
     
-    -- 3. Move o mouse para o pet
+    -- Método 1: Remote
+    for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+        if obj:IsA("RemoteEvent") then
+            pcall(function()
+                obj:FireServer("Capture", pet.Name, pet)
+                print("📡 Remote enviado: " .. obj.Name)
+                task.wait(0.3)
+            end)
+        end
+    end
+    
+    -- Método 2: ProximityPrompt
+    local prompt = pet:FindFirstChild("ProximityPrompt")
+    if prompt then
+        pcall(function()
+            prompt:InputHoldBegin(Player)
+            task.wait(0.3)
+            prompt:InputHoldEnd(Player)
+            print("🎯 Prompt ativado")
+            task.wait(0.3)
+        end)
+    end
+    
+    -- Método 3: Clique
     local camera = Workspace.CurrentCamera
-    if not camera then
-        processando = false
-        return false
-    end
-    
-    local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-    if onScreen then
-        MoverMouse(pos.X, pos.Y)
-        task.wait(0.15)
-    end
-    
-    -- 4. Tenta capturar via Remote
-    local remoteSucesso = CapturarPorRemote(pet)
-    
-    -- 5. Clica no pet (lança lasso)
-    if onScreen then
-        print("🎯 Lançando lasso...")
-        Clicar()
-        task.wait(0.3)
-    end
-    
-    -- 6. CLICA RÁPIDO PARA ENCHER A BARRINHA
-    print("🖱️ Enchendo a barra...")
-    for i = 1, Config.TotalClicks do
-        Clicar()
-        if i % 10 == 0 then
-            print("  📊 " .. i .. "/" .. Config.TotalClicks)
+    if camera then
+        local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+        if onScreen then
+            pcall(function()
+                VirtualInputManager:SendMouseMovement(pos.X, pos.Y, Enum.VirtualKeyMode.Delta, game)
+                task.wait(0.1)
+                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+                task.wait(0.02)
+                VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+                print("🖱️ Clique enviado")
+                task.wait(0.2)
+                
+                -- Cliques rápidos
+                for i = 1, 20 do
+                    VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, true, game, 0)
+                    task.wait(0.02)
+                    VirtualInputManager:SendMouseButtonEvent(Enum.UserInputType.MouseButton1, 0, false, game, 0)
+                end
+            end)
         end
-        task.wait(Config.ClickSpeed)
     end
     
-    task.wait(0.5)
-    
-    -- 7. Verifica se capturou
+    -- Verifica se capturou
     local pasta = Player:FindFirstChild("Pets")
-    if pasta then
-        for _, p in pairs(pasta:GetChildren()) do
-            if p.Name == pet.Name then
-                capturados[pet] = true
-                totalCapturados = totalCapturados + 1
-                processando = false
-                print("✅ CAPTUROU: " .. pet.Name)
-                status.Text = "✅ Capturou: " .. pet.Name
-                return true
-            end
-        end
-    end
-    
-    if not pet.Parent then
+    if pasta and pasta:FindFirstChild(pet.Name) then
         capturados[pet] = true
         totalCapturados = totalCapturados + 1
         processando = false
@@ -250,11 +245,8 @@ local function LoopAuto()
             
             if alvo then
                 CapturarPet(alvo)
-                task.wait(Config.Delay)
-            else
-                status.Text = "⏳ Procurando pets..."
-                task.wait(1)
             end
+            task.wait(5)
         end
     end
 end
@@ -294,166 +286,49 @@ local function AtualizarESP()
 end
 
 -- ========================================
--- CRIAR MENU
+-- BOTÕES
 -- ========================================
-local function CriarMenu()
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "SixSeven"
-    gui.Parent = CoreGui
-    gui.ResetOnSpawn = false
+btnESP.MouseButton1Click:Connect(function()
+    espAtivo = not espAtivo
+    btnESP.Text = espAtivo and "🟢 ESP (ON)" or "🔴 ESP (OFF)"
+    btnESP.BackgroundColor3 = espAtivo and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(50, 50, 120)
+    AtualizarESP()
     
-    local frame = Instance.new("Frame")
-    frame.Parent = gui
-    frame.Size = UDim2.new(0, 260, 0, 220)
-    frame.Position = UDim2.new(0.5, -130, 0.5, -110)
-    frame.BackgroundColor3 = Color3.fromRGB(10, 10, 30)
-    frame.BackgroundTransparency = 0.1
-    frame.Active = true
-    frame.Draggable = true
-    
-    local corner = Instance.new("UICorner")
-    corner.Parent = frame
-    corner.CornerRadius = UDim.new(0, 12)
-    
-    local titulo = Instance.new("TextLabel")
-    titulo.Parent = frame
-    titulo.Size = UDim2.new(1, 0, 0, 35)
-    titulo.BackgroundColor3 = Color3.fromRGB(80, 0, 200)
-    titulo.BackgroundTransparency = 0.3
-    titulo.Text = "✧ SIX SEVEN"
-    titulo.TextColor3 = Color3.new(1, 1, 1)
-    titulo.TextSize = 18
-    titulo.Font = Enum.Font.GothamBold
-    
-    local info = Instance.new("TextLabel")
-    info.Parent = frame
-    info.Size = UDim2.new(0.9, 0, 0, 20)
-    info.Position = UDim2.new(0.05, 0, 0.18, 0)
-    info.BackgroundTransparency = 1
-    info.Text = "🖱️ " .. Config.TotalClicks .. " cliques"
-    info.TextColor3 = Color3.fromRGB(100, 200, 255)
-    info.TextSize = 12
-    info.Font = Enum.Font.Gotham
-    
-    local btnESP = Instance.new("TextButton")
-    btnESP.Parent = frame
-    btnESP.Size = UDim2.new(0.8, 0, 0, 30)
-    btnESP.Position = UDim2.new(0.1, 0, 0.3, 0)
-    btnESP.BackgroundColor3 = Color3.fromRGB(50, 50, 120)
-    btnESP.Text = "🔴 ESP"
-    btnESP.TextColor3 = Color3.new(1, 1, 1)
-    btnESP.TextSize = 14
-    btnESP.Font = Enum.Font.GothamBold
-    btnESP.BorderSizePixel = 0
-    
-    local espCorner = Instance.new("UICorner")
-    espCorner.Parent = btnESP
-    espCorner.CornerRadius = UDim.new(0, 8)
-    
-    local btnAuto = Instance.new("TextButton")
-    btnAuto.Parent = frame
-    btnAuto.Size = UDim2.new(0.8, 0, 0, 30)
-    btnAuto.Position = UDim2.new(0.1, 0, 0.5, 0)
-    btnAuto.BackgroundColor3 = Color3.fromRGB(50, 50, 120)
-    btnAuto.Text = "🔴 AUTO"
-    btnAuto.TextColor3 = Color3.new(1, 1, 1)
-    btnAuto.TextSize = 14
-    btnAuto.Font = Enum.Font.GothamBold
-    btnAuto.BorderSizePixel = 0
-    
-    local autoCorner = Instance.new("UICorner")
-    autoCorner.Parent = btnAuto
-    autoCorner.CornerRadius = UDim.new(0, 8)
-    
-    local btnTeste = Instance.new("TextButton")
-    btnTeste.Parent = frame
-    btnTeste.Size = UDim2.new(0.8, 0, 0, 30)
-    btnTeste.Position = UDim2.new(0.1, 0, 0.7, 0)
-    btnTeste.BackgroundColor3 = Color3.fromRGB(180, 120, 40)
-    btnTeste.Text = "🎯 TESTAR"
-    btnTeste.TextColor3 = Color3.new(1, 1, 1)
-    btnTeste.TextSize = 14
-    btnTeste.Font = Enum.Font.GothamBold
-    btnTeste.BorderSizePixel = 0
-    
-    local testeCorner = Instance.new("UICorner")
-    testeCorner.Parent = btnTeste
-    testeCorner.CornerRadius = UDim.new(0, 8)
-    
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Parent = frame
-    statusLabel.Size = UDim2.new(0.9, 0, 0, 20)
-    statusLabel.Position = UDim2.new(0.05, 0, 0.88, 0)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "📊 Pronto"
-    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
-    statusLabel.TextSize = 12
-    statusLabel.Font = Enum.Font.Gotham
-    
-    btnESP.MouseButton1Click:Connect(function()
-        espAtivo = not espAtivo
-        btnESP.Text = espAtivo and "🟢 ESP" or "🔴 ESP"
-        btnESP.BackgroundColor3 = espAtivo and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(50, 50, 120)
-        AtualizarESP()
-        
-        task.spawn(function()
-            while espAtivo do
-                AtualizarESP()
-                task.wait(1)
-            end
-        end)
-    end)
-    
-    btnAuto.MouseButton1Click:Connect(function()
-        autoAtivo = not autoAtivo
-        btnAuto.Text = autoAtivo and "🟢 AUTO" or "🔴 AUTO"
-        btnAuto.BackgroundColor3 = autoAtivo and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(50, 50, 120)
-        statusLabel.Text = autoAtivo and "🔄 Auto ligado" or "⏹️ Auto desligado"
-        
-        if autoAtivo then
-            task.spawn(LoopAuto)
-        end
-    end)
-    
-    btnTeste.MouseButton1Click:Connect(function()
-        print("🎯 TESTANDO CAPTURA...")
-        local pets = EncontrarPets()
-        if #pets > 0 then
-            CapturarPet(pets[1])
-        else
-            print("❌ Nenhum pet encontrado!")
-            statusLabel.Text = "❌ Nenhum pet"
-        end
-    end)
-    
+    -- Loop do ESP
     task.spawn(function()
-        while true do
-            task.wait(2)
-            local count = #EncontrarPets()
-            if not autoAtivo and not processando then
-                statusLabel.Text = "📊 Pets: " .. count .. " | Capturados: " .. totalCapturados
-            end
+        while espAtivo do
+            AtualizarESP()
+            task.wait(1)
         end
     end)
+end)
+
+btnAuto.MouseButton1Click:Connect(function()
+    autoAtivo = not autoAtivo
+    btnAuto.Text = autoAtivo and "🟢 AUTO (ON)" or "🔴 AUTO (OFF)"
+    btnAuto.BackgroundColor3 = autoAtivo and Color3.fromRGB(40, 180, 40) or Color3.fromRGB(50, 50, 120)
+    status.Text = autoAtivo and "🔄 Auto ligado" or "⏹️ Auto desligado"
     
-    return gui
-end
+    if autoAtivo then
+        task.spawn(LoopAuto)
+    end
+end)
 
 -- ========================================
--- INICIAR
+-- MONITORAMENTO
 -- ========================================
-print("========================================")
-print("  ✧ SIX SEVEN - VERSÃO REMOTE")
-print("========================================")
-print("  📌 REMOTES DETECTADOS:")
-print("  - LassoRopeVisual")
-print("  - EggFlickerVisual")
-print("  - showConfirmationModal")
-print("  - FarmWeatherChanged")
-print("========================================")
+task.spawn(function()
+    while true do
+        task.wait(2)
+        local count = #EncontrarPets()
+        if not autoAtivo and not processando then
+            status.Text = "📊 Pets: " .. count .. " | Capturados: " .. totalCapturados
+        end
+    end
+end)
 
-CriarMenu()
-
-print("✅ SCRIPT CARREGADO!")
-print("📌 Teste com o botão TESTAR")
-print("📌 Veja o console (F9)")
+print("========================================")
+print("  ✅ SCRIPT PRONTO!")
+print("  📌 Clique em ESP para ver os pets")
+print("  📌 Clique em AUTO para capturar")
+print("========================================")
