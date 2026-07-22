@@ -1,4 +1,4 @@
--- SIX SEVEN - CAPTURA COMPLETA COM MINIGAME
+-- SIX SEVEN - VERSÃO FINAL COM CAPTURA COMPLETA (MINIGAME)
 print("🚀 INICIANDO SIX SEVEN...")
 
 -- ===== SERVIÇOS =====
@@ -25,9 +25,8 @@ local config = {
 
 local espObjects = {}
 local petPositions = {}
-local isCapturing = false
 
--- ===== FUNÇÃO PARA ENCONTRAR PETS =====
+-- ===== FUNÇÃO PARA ENCONTRAR PETS (SÓ OS QUE SE MOVEM) =====
 local function FindPets()
     local pets = {}
     for _, obj in pairs(workspace:GetDescendants()) do
@@ -133,14 +132,14 @@ local function EquipLasso()
     return false
 end
 
--- ===== FUNÇÃO PARA CLICAR E CARREGAR BARRINHA =====
-local function ClickAndCharge(pet)
+-- ===== FUNÇÃO DE CAPTURA COMPLETA (COM MINIGAME DA BARRINHA) =====
+local function CapturePet(pet)
     if not pet then return false end
     
     local hrp = pet:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
     
-    print("🎯 Iniciando captura de: " .. pet.Name)
+    print("🎯 Capturando: " .. pet.Name)
     
     -- 1. Equipa o lasso
     EquipLasso()
@@ -151,7 +150,7 @@ local function ClickAndCharge(pet)
     TeleportTo(targetPos)
     task.wait(0.3)
     
-    -- 3. Clica no pet para jogar o lasso
+    -- 3. Joga o lasso no pet (clica nele)
     local success = false
     pcall(function()
         local mouse = Player:GetMouse()
@@ -181,9 +180,8 @@ local function ClickAndCharge(pet)
     -- 5. FICA CLICANDO NA TELA PARA CARREGAR A BARRINHA
     print("🔄 Carregando barrinha...")
     
-    -- Clica várias vezes na tela para carregar a barrinha
     local clickCount = 0
-    local maxClicks = 15 -- Número de cliques para encher a barrinha
+    local maxClicks = 20 -- Número de cliques para encher a barrinha (ajuste se necessário)
     
     for i = 1, maxClicks do
         if not config.autoOn then break end
@@ -197,14 +195,13 @@ local function ClickAndCharge(pet)
                 mouse.Button1Click()
                 clickCount = clickCount + 1
                 
-                -- Mostra progresso a cada 3 cliques
                 if clickCount % 3 == 0 then
                     print("⏳ Carregando: " .. math.floor((clickCount / maxClicks) * 100) .. "%")
                 end
             end
         end)
         
-        task.wait(0.1)
+        task.wait(0.08)
     end
     
     print("✅ Barrinha carregada! (" .. clickCount .. " cliques)")
@@ -320,7 +317,7 @@ local function UpdateESP()
     end
 end
 
--- ===== CRIAR MENU =====
+-- ===== CRIAR MENU COM + E - =====
 local function CreateMenu()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "SixSeven"
@@ -585,7 +582,7 @@ local function CreateMenu()
                     
                     if target then
                         -- CAPTURA COMPLETA COM MINIGAME
-                        local ok = ClickAndCharge(target)
+                        local ok = CapturePet(target)
                         if ok then
                             config.petsCapturados[target] = true
                             print("✅ " .. target.Name .. " capturado!")
@@ -604,7 +601,7 @@ local function CreateMenu()
                                 countdownLabel.Parent.Visible = false
                             end
                         else
-                            print("❌ Falha ao capturar " .. target.Name)
+                            print("❌ Falha ao capturar " .. target.Name .. ", tentando próximo...")
                         end
                         task.wait(1)
                     else
@@ -715,9 +712,10 @@ end
 print("========================================")
 print("  ✧ SIX SEVEN - CAPTURA COMPLETA")
 print("========================================")
-print("  ✅ Joga o lasso no pet")
-print("  ✅ Clica na tela pra carregar barrinha")
-print("  ✅ Leva o pet para a base")
+print("  ✅ Botões + e - para ajustar")
+print("  ✅ ESP destaca pets em movimento")
+print("  ✅ Tempo ajustável de 1 a 5 segundos")
+print("  ✅ Captura com minigame da barrinha")
 print("========================================")
 
 local success, err = pcall(CreateMenu)
