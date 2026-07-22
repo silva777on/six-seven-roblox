@@ -1,9 +1,9 @@
 --[[
-    SIX SEVEN - VERSÃO MANUAL (FUNCIONAL)
+    SIX SEVEN - ULTRA SIMPLES (APENAS CLICKS)
     Game: [🍎] Capture e Domestique!
 ]]
 
-print("🔄 CARREGANDO SIX SEVEN - MANUAL...")
+print("🔄 CARREGANDO SIX SEVEN - ULTRA SIMPLES...")
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -14,7 +14,6 @@ local UserInputService = game:GetService("UserInputService")
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local RootPart = Character and Character:FindFirstChild("HumanoidRootPart")
-local Humanoid = Character and Character:FindFirstChild("Humanoid")
 
 -- ========================================
 -- CONFIGURAÇÕES
@@ -63,7 +62,7 @@ local function EncontrarPets()
 end
 
 -- ========================================
--- FUNÇÕES DE CLIQUE
+-- FUNÇÕES DE CLICK
 -- ========================================
 local function Clicar()
     pcall(function()
@@ -88,7 +87,7 @@ local function PressionarTecla(tecla)
 end
 
 -- ========================================
--- FUNÇÃO PARA CAPTURAR PET
+-- FUNÇÃO PARA CAPTURAR PET (SÓ CLICK)
 -- ========================================
 local function CapturarPet(pet)
     if processando then return false end
@@ -102,10 +101,10 @@ local function CapturarPet(pet)
         return false 
     end
     
-    print("\n🎯 CAPTURANDO: " .. pet.Name)
+    print("🎯 CAPTURANDO: " .. pet.Name)
     status.Text = "🎯 Capturando: " .. pet.Name
     
-    -- 1. TELEPORTA PARA O PET
+    -- 1. Teleporta
     if RootPart then
         pcall(function()
             RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 2, 0))
@@ -113,53 +112,36 @@ local function CapturarPet(pet)
         task.wait(0.3)
     end
     
-    -- 2. EQUIPA LASSO (TECLA 1)
-    print("🎯 Equipando lasso (tecla 1)...")
+    -- 2. Tecla 1 (lasso)
     PressionarTecla(Enum.KeyCode.One)
     task.wait(0.3)
     
-    -- 3. MIRA NO PET
-    print("🎯 Mirando no pet...")
+    -- 3. Move mouse para o pet
     local camera = Workspace.CurrentCamera
     if camera then
         local pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
         if onScreen then
             MoverMouse(pos.X, pos.Y)
             task.wait(0.15)
-        else
-            -- Teleporta mais perto
-            if RootPart then
-                pcall(function()
-                    RootPart.CFrame = CFrame.new(hrp.Position + Vector3.new(0, 1.5, 0))
-                end)
-                task.wait(0.3)
-            end
-            pos, onScreen = camera:WorldToViewportPoint(hrp.Position)
-            if onScreen then
-                MoverMouse(pos.X, pos.Y)
-                task.wait(0.15)
-            end
         end
     end
     
-    -- 4. LANÇA LASSO
-    print("🎯 Lançando lasso...")
+    -- 4. Clica no pet (lança lasso)
     Clicar()
     task.wait(0.5)
     
-    -- 5. CLICA 80x PARA ENCHER A BARRA
-    print("🖱️ Enchendo a barra (" .. Config.TotalClicks .. " cliques)...")
+    -- 5. Clica 80x na tela
     for i = 1, Config.TotalClicks do
         Clicar()
         if i % 10 == 0 then
-            print("  📊 " .. i .. "/" .. Config.TotalClicks)
+            print("  " .. i .. "/" .. Config.TotalClicks)
         end
         task.wait(Config.ClickSpeed)
     end
     
     task.wait(0.5)
     
-    -- 6. VERIFICA SE CAPTUROU
+    -- 6. Verifica captura
     local pasta = Player:FindFirstChild("Pets")
     if pasta then
         for _, p in pairs(pasta:GetChildren()) do
@@ -174,7 +156,6 @@ local function CapturarPet(pet)
         end
     end
     
-    -- Verifica se o pet sumiu
     if not pet.Parent then
         capturados[pet] = true
         totalCapturados = totalCapturados + 1
@@ -271,8 +252,8 @@ local function CriarMenu()
     
     local frame = Instance.new("Frame")
     frame.Parent = gui
-    frame.Size = UDim2.new(0, 260, 0, 220)
-    frame.Position = UDim2.new(0.5, -130, 0.5, -110)
+    frame.Size = UDim2.new(0, 240, 0, 190)
+    frame.Position = UDim2.new(0.5, -120, 0.5, -95)
     frame.BackgroundColor3 = Color3.fromRGB(10, 10, 30)
     frame.BackgroundTransparency = 0.1
     frame.Active = true
@@ -426,13 +407,11 @@ local function CriarMenu()
     local function Minimizar()
         frame.Visible = false
         btnFloat.Visible = true
-        menuAberto = false
     end
     
     local function Abrir()
         frame.Visible = true
         btnFloat.Visible = false
-        menuAberto = true
     end
     
     btnMin.MouseButton1Click:Connect(Minimizar)
@@ -496,17 +475,15 @@ end
 -- INICIAR
 -- ========================================
 print("========================================")
-print("  ✧ SIX SEVEN - VERSÃO MANUAL")
+print("  ✧ SIX SEVEN - ULTRA SIMPLES")
 print("========================================")
-print("  📌 COMO FUNCIONA:")
-print("  1. Teleporta para o pet")
-print("  2. Equipa lasso (tecla 1)")
-print("  3. Mira no pet")
-print("  4. Lança lasso (clique)")
-print("  5. " .. Config.TotalClicks .. " cliques na tela")
+print("  📌 SÓ CLICK:")
+print("  1. Teleporta")
+print("  2. Tecla 1")
+print("  3. Clica no pet")
+print("  4. 80 cliques na tela")
 print("========================================")
 
 CriarMenu()
 
-print("✅ SCRIPT CARREGADO!")
-print("📌 Teste com o botão TESTAR")
+print("✅ PRONTO!")
